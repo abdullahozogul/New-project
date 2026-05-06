@@ -75,10 +75,17 @@ function App() {
     [savedWords],
   )
 
-  const addWord = (word: VocabularyItem) => {
-    if (!savedTerms.has(word.term.toLowerCase())) {
-      setSavedWords((current) => [word, ...current])
-    }
+  const toggleWord = (word: VocabularyItem) => {
+    const termKey = word.term.toLowerCase()
+
+    setSavedWords((current) => {
+      const alreadySaved = current.some((item) => item.term.toLowerCase() === termKey)
+      if (alreadySaved) {
+        return current.filter((item) => item.term.toLowerCase() !== termKey)
+      }
+
+      return [word, ...current]
+    })
   }
 
   const speakArticle = (article: Article) => {
@@ -318,7 +325,7 @@ function App() {
                   type="button"
                   key={word.term}
                   className={savedTerms.has(word.term.toLowerCase()) ? 'word-chip saved' : 'word-chip'}
-                  onClick={() => addWord(word)}
+                  onClick={() => toggleWord(word)}
                 >
                   {savedTerms.has(word.term.toLowerCase()) ? (
                     <Check size={15} aria-hidden="true" />
