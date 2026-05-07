@@ -269,6 +269,120 @@ button {
   align-items: start;
 }
 
+.marketing-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.marketing-panel {
+  overflow: hidden;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px;
+}
+
+.price-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcfd;
+  display: grid;
+  gap: 12px;
+}
+
+.price-card.featured {
+  background: #eef5f3;
+  border-color: rgba(17, 107, 92, 0.35);
+}
+
+.price-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.price {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.price-suffix {
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.price-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.price-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.price-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #2d3743;
+  line-height: 1.4;
+}
+
+.price-card li svg {
+  color: #116b5c;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.why-grid {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.why-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcfd;
+}
+
+.why-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #2f5fbb;
+  flex: 0 0 auto;
+}
+
+.why-card strong {
+  display: block;
+  margin: 0 0 4px;
+}
+
+.why-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .panel {
   min-width: 0;
   border: 1px solid var(--line);
@@ -639,7 +753,8 @@ button {
 
   .setup-strip,
   .metric-grid,
-  .content-grid {
+  .content-grid,
+  .pricing-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -669,7 +784,8 @@ button {
 
   .setup-strip,
   .metric-grid,
-  .content-grid {
+  .content-grid,
+  .pricing-grid {
     grid-template-columns: 1fr;
   }
 

@@ -427,6 +427,105 @@ function App() {
             </div>
           </section>
         </div>
+
+        <div className="marketing-grid" aria-label="Product details">
+          <section className="panel marketing-panel" aria-labelledby="pricing-title">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Simple pricing</p>
+                <h2 id="pricing-title">Pick a plan that matches your pace</h2>
+              </div>
+              <Sparkles size={18} aria-hidden="true" />
+            </div>
+
+            <div className="pricing-grid">
+              {[
+                {
+                  name: 'Starter',
+                  price: '$0',
+                  note: 'For consistent daily practice.',
+                  highlights: ['Reading desk', 'Vocabulary saving', 'Basic chat corrections'],
+                },
+                {
+                  name: 'Plus',
+                  price: '$9',
+                  note: 'For faster fluency loops.',
+                  highlights: ['Unlimited coach turns', 'Listening mode', 'Progress insights'],
+                  featured: true,
+                },
+                {
+                  name: 'Studio',
+                  price: '$19',
+                  note: 'For power learners and creators.',
+                  highlights: ['Multiple goals', 'Advanced feedback', 'Priority features'],
+                },
+              ].map((plan) => (
+                <article
+                  key={plan.name}
+                  className={plan.featured ? 'price-card featured' : 'price-card'}
+                >
+                  <header>
+                    <strong>{plan.name}</strong>
+                    <div className="price-line">
+                      <span className="price">{plan.price}</span>
+                      <span className="price-suffix">/month</span>
+                    </div>
+                    <p>{plan.note}</p>
+                  </header>
+
+                  <ul>
+                    {plan.highlights.map((item) => (
+                      <li key={item}>
+                        <Check size={16} aria-hidden="true" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel marketing-panel" aria-labelledby="why-title">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Why Colingual</p>
+                <h2 id="why-title">A calm workflow that keeps you showing up</h2>
+              </div>
+              <Brain size={18} aria-hidden="true" />
+            </div>
+
+            <div className="why-grid">
+              {[
+                {
+                  icon: BookOpen,
+                  title: 'Real reading, not random drills',
+                  text: 'Level-matched articles with vocabulary you can save in one tap.',
+                },
+                {
+                  icon: Headphones,
+                  title: 'Listen + shadow to build rhythm',
+                  text: 'Turn any article into a listening session and practice pronunciation.',
+                },
+                {
+                  icon: MessageSquareText,
+                  title: 'Guided chat that corrects gently',
+                  text: 'Write freely; get corrected tone, grammar, and word choice.',
+                },
+              ].map((reason) => (
+                <article className="why-card" key={reason.title}>
+                  <span className="why-icon" aria-hidden="true">
+                    <reason.icon size={18} />
+                  </span>
+                  <div>
+                    <strong>{reason.title}</strong>
+                    <p>{reason.text}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   )
