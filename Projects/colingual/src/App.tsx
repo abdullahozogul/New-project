@@ -5,7 +5,9 @@ import {
   Check,
   ChevronRight,
   CirclePlay,
+  Cloud,
   Clock3,
+  Globe,
   Headphones,
   Languages,
   LayoutDashboard,
@@ -166,23 +168,36 @@ function App() {
           </div>
 
           <div className="topbar-actions">
-            <form
-              className="signup-mini"
-              aria-label="Sign up"
-              onSubmit={(event) => {
-                event.preventDefault()
-                setSignupEmail('')
-              }}
-            >
-              <input
-                value={signupEmail}
-                onChange={(event) => setSignupEmail(event.target.value)}
-                placeholder="E-posta ile kayıt ol"
-                inputMode="email"
-                autoComplete="email"
-              />
-              <button type="submit">Kayıt Ol</button>
-            </form>
+            <div className="signup-mini" aria-label="Sign up">
+              <div className="signup-providers" aria-label="Providers">
+                <button type="button" className="provider-button">
+                  <Globe size={16} aria-hidden="true" />
+                  Google
+                </button>
+                <button type="button" className="provider-button subtle">
+                  <Cloud size={16} aria-hidden="true" />
+                  Cloud
+                </button>
+              </div>
+
+              <form
+                className="signup-email"
+                aria-label="Email sign up"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  setSignupEmail('')
+                }}
+              >
+                <input
+                  value={signupEmail}
+                  onChange={(event) => setSignupEmail(event.target.value)}
+                  placeholder="E-posta ile kayıt ol"
+                  inputMode="email"
+                  autoComplete="email"
+                />
+                <button type="submit">Kayıt Ol</button>
+              </form>
+            </div>
 
             <div className="profile-chip">
               <UserRound size={18} aria-hidden="true" />

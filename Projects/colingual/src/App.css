@@ -146,7 +146,36 @@
   background: #ffffff;
 }
 
-.signup-mini input {
+.signup-providers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.provider-button {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  background: #f2f6f8;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.provider-button.subtle {
+  color: var(--muted);
+}
+
+.signup-email {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.signup-email input {
   width: min(260px, 42vw);
   height: 34px;
   border: 0;
@@ -154,7 +183,7 @@
   border-radius: 999px;
 }
 
-.signup-mini button {
+.signup-email button {
   height: 34px;
   padding: 0 12px;
   border-radius: 999px;
@@ -912,9 +941,24 @@ textarea {
   .signup-mini {
     width: 100%;
     border-radius: 14px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .signup-mini input {
+  .signup-providers {
+    width: 100%;
+  }
+
+  .provider-button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .signup-email {
+    width: 100%;
+  }
+
+  .signup-email input {
     width: 100%;
   }
 
