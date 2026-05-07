@@ -40,6 +40,7 @@ function App() {
   const [targetLanguage, setTargetLanguage] = useState('en')
   const [level, setLevel] = useState<Level>('B1')
   const [goal, setGoal] = useState(learningGoals[0])
+  const [signupEmail, setSignupEmail] = useState('')
   const [selectedArticleId, setSelectedArticleId] = useState('food-waste-b1')
   const [savedWords, setSavedWords] = useState<VocabularyItem[]>([
     articles[2].vocabulary[0],
@@ -164,10 +165,30 @@ function App() {
             <h1>Today&apos;s learning desk</h1>
           </div>
 
-          <div className="profile-chip">
-            <UserRound size={18} aria-hidden="true" />
-            <span>{level}</span>
-            <strong>{targetLanguageOption?.label}</strong>
+          <div className="topbar-actions">
+            <form
+              className="signup-mini"
+              aria-label="Sign up"
+              onSubmit={(event) => {
+                event.preventDefault()
+                setSignupEmail('')
+              }}
+            >
+              <input
+                value={signupEmail}
+                onChange={(event) => setSignupEmail(event.target.value)}
+                placeholder="E-posta ile kayıt ol"
+                inputMode="email"
+                autoComplete="email"
+              />
+              <button type="submit">Kayıt Ol</button>
+            </form>
+
+            <div className="profile-chip">
+              <UserRound size={18} aria-hidden="true" />
+              <span>{level}</span>
+              <strong>{targetLanguageOption?.label}</strong>
+            </div>
           </div>
         </header>
 
