@@ -383,6 +383,96 @@ button {
   line-height: 1.55;
 }
 
+.about-body {
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.about-body p {
+  margin: 0;
+  color: #2d3743;
+  line-height: 1.65;
+}
+
+.about-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.about-pill {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: #31404d;
+  background: #eef2f6;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contact-form {
+  padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.contact-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.contact-form label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contact-message {
+  grid-column: 1 / -1;
+}
+
+textarea {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: #f8fafc;
+  font: inherit;
+  resize: vertical;
+}
+
+.contact-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.contact-actions button {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  background: #116b5c;
+  font-weight: 900;
+}
+
+.contact-actions small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .panel {
   min-width: 0;
   border: 1px solid var(--line);
@@ -786,6 +876,10 @@ button {
   .metric-grid,
   .content-grid,
   .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-form {
     grid-template-columns: 1fr;
   }
 

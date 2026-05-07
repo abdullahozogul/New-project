@@ -9,6 +9,7 @@ import {
   Headphones,
   Languages,
   LayoutDashboard,
+  Mail,
   MessageSquareText,
   Mic,
   Plus,
@@ -429,6 +430,109 @@ function App() {
         </div>
 
         <div className="marketing-grid" aria-label="Product details">
+          <section className="panel marketing-panel" aria-labelledby="why-title">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Why Colingual</p>
+                <h2 id="why-title">A calm workflow that keeps you showing up</h2>
+              </div>
+              <Brain size={18} aria-hidden="true" />
+            </div>
+
+            <div className="why-grid">
+              {[
+                {
+                  icon: BookOpen,
+                  title: 'Real reading, not random drills',
+                  text: 'Level-matched articles with vocabulary you can save in one tap.',
+                },
+                {
+                  icon: Headphones,
+                  title: 'Listen + shadow to build rhythm',
+                  text: 'Turn any article into a listening session and practice pronunciation.',
+                },
+                {
+                  icon: MessageSquareText,
+                  title: 'Guided chat that corrects gently',
+                  text: 'Write freely; get corrected tone, grammar, and word choice.',
+                },
+              ].map((reason) => (
+                <article className="why-card" key={reason.title}>
+                  <span className="why-icon" aria-hidden="true">
+                    <reason.icon size={18} />
+                  </span>
+                  <div>
+                    <strong>{reason.title}</strong>
+                    <p>{reason.text}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel marketing-panel" aria-labelledby="about-title">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Hakkında</p>
+                <h2 id="about-title">Okuma + dinleme + sohbet, tek ritimde</h2>
+              </div>
+              <Languages size={18} aria-hidden="true" />
+            </div>
+
+            <div className="about-body">
+              <p>
+                Colingual; seviye uyumlu kısa okumalar, tek dokunuşla kelime kaydetme ve nazik
+                düzeltmelerle sohbet pratiğini aynı akışta birleştirir.
+              </p>
+              <div className="about-pills" role="list" aria-label="Highlights">
+                {['Seviye uyumlu içerik', 'Günlük akış', 'Nazik geri bildirim', 'Takip edilebilir ilerleme'].map(
+                  (item) => (
+                    <span key={item} role="listitem" className="about-pill">
+                      {item}
+                    </span>
+                  ),
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="panel marketing-panel" aria-labelledby="contact-title">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">İletişim</p>
+                <h2 id="contact-title">Görüşün bizim için değerli</h2>
+              </div>
+              <Mail size={18} aria-hidden="true" />
+            </div>
+
+            <form
+              className="contact-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+              }}
+            >
+              <label>
+                <span>Ad</span>
+                <input placeholder="Adın" autoComplete="name" />
+              </label>
+              <label>
+                <span>E-posta</span>
+                <input placeholder="mail@ornek.com" type="email" autoComplete="email" />
+              </label>
+              <label className="contact-message">
+                <span>Mesaj</span>
+                <textarea placeholder="Ne geliştirelim?" rows={4} />
+              </label>
+              <div className="contact-actions">
+                <button type="submit">
+                  <Send size={16} aria-hidden="true" />
+                  Gönder
+                </button>
+                <small>Şimdilik demo form; backend bağlanınca iletilecek.</small>
+              </div>
+            </form>
+          </section>
+
           <section className="panel marketing-panel" aria-labelledby="pricing-title">
             <div className="panel-heading">
               <div>
@@ -481,46 +585,6 @@ function App() {
                       </li>
                     ))}
                   </ul>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="panel marketing-panel" aria-labelledby="why-title">
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">Why Colingual</p>
-                <h2 id="why-title">A calm workflow that keeps you showing up</h2>
-              </div>
-              <Brain size={18} aria-hidden="true" />
-            </div>
-
-            <div className="why-grid">
-              {[
-                {
-                  icon: BookOpen,
-                  title: 'Real reading, not random drills',
-                  text: 'Level-matched articles with vocabulary you can save in one tap.',
-                },
-                {
-                  icon: Headphones,
-                  title: 'Listen + shadow to build rhythm',
-                  text: 'Turn any article into a listening session and practice pronunciation.',
-                },
-                {
-                  icon: MessageSquareText,
-                  title: 'Guided chat that corrects gently',
-                  text: 'Write freely; get corrected tone, grammar, and word choice.',
-                },
-              ].map((reason) => (
-                <article className="why-card" key={reason.title}>
-                  <span className="why-icon" aria-hidden="true">
-                    <reason.icon size={18} />
-                  </span>
-                  <div>
-                    <strong>{reason.title}</strong>
-                    <p>{reason.text}</p>
-                  </div>
                 </article>
               ))}
             </div>
