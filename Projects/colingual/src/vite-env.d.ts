@@ -13,6 +13,17 @@ interface ImportMetaEnv {
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string
   /** Public site URL (dev server or production), e.g. Stripe return URLs */
   readonly VITE_APP_URL?: string
+  /** Lemon Squeezy product ID (sandbox / production). */
+  readonly VITE_LEMON_SQUEEZY_PRODUCT_ID?: string
+  /**
+   * Lemon Squeezy variant ID for the priced plan (same as “pricing” option in the dashboard).
+   * Used for checkout URLs and API.
+   */
+  readonly VITE_LEMON_SQUEEZY_VARIANT_ID?: string
+  /** Subdomain before `.lemonsqueezy.com` (e.g. `colingual`). */
+  readonly VITE_LEMON_SQUEEZY_STORE_SLUG?: string
+  /** Full checkout URL; if set, overrides slug + variant when building links. */
+  readonly VITE_LEMON_SQUEEZY_CHECKOUT_URL?: string
 }
 
 interface ImportMeta {

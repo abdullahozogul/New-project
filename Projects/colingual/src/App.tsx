@@ -38,13 +38,13 @@ import {
 } from './data'
 import { supabase, supabaseConfigured } from './lib/supabase'
 import { generateCoachReply, isGeminiAiConfigured, offlineCoachFallback, resolveGeminiModel, type CoachTurn } from './lib/gemini'
+import { getLemonSqueezyPremiumCheckoutUrl } from './lib/lemonSqueezy'
 
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
   const [level, setLevel] = useState<Level>('B1')
   const [goal, setGoal] = useState(learningGoals[0])
-  const [signupEmail, setSignupEmail] = useState('')
   const [user, setUser] = useState<User | null>(null)
   const [selectedArticleId, setSelectedArticleId] = useState('food-waste-b1')
   const [selectedLexeme, setSelectedLexeme] = useState<string | null>(null)
@@ -86,6 +86,8 @@ function App() {
   const targetLanguageOption = languages.find((language) => language.code === targetLanguage)
 
   const nativeLanguageOption = languages.find((language) => language.code === nativeLanguage)
+
+  const lemonSqueezyCheckoutUrl = useMemo(() => getLemonSqueezyPremiumCheckoutUrl(), [])
 
   const vocabularyLookup = useMemo(() => {
     const entries = new Map<string, VocabularyItem>()
@@ -377,8 +379,9 @@ function App() {
             { label: 'Vocabulary', icon: Brain },
             { label: 'Chat', icon: MessageSquareText },
             { label: 'Progress', icon: Trophy },
+            { label: 'Planlar', icon: Sparkles },
           ].map((item) => (
-            <a key={item.label} href={`#${item.label.toLowerCase()}`}>
+            <a key={item.label} href={`#${item.label === 'Planlar' ? 'pricing' : item.label.toLowerCase()}`}>
               <item.icon size={18} aria-hidden="true" />
               <span>{item.label}</span>
             </a>
@@ -426,40 +429,47 @@ function App() {
                   <LogOut size={16} aria-hidden="true" />
                   Sign out
                 </button>
+                {lemonSqueezyCheckoutUrl ? (
+                  <a
+                    className="provider-button provider-premium-outline"
+                    href={lemonSqueezyCheckoutUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Premium
+                  </a>
+                ) : null}
               </div>
             ) : (
-              <div className="signup-mini signup-auth-bar" aria-label="Sign up">
-                <div className="signup-providers" aria-label="Providers">
-                  <button
-                    type="button"
-                    className="provider-button provider-google"
-                    onClick={() => {
-                      void signInWithGoogle()
-                    }}
-                    disabled={!supabaseConfigured}
-                    aria-label="Google ile giriş yap"
-                  >
-                    Google
-                  </button>
+              <div className="signup-mini signup-auth-bar" aria-label="Hesap ve üyelik">
+                <div className="signup-auth-actions">
+                  <div className="signup-providers">
+                    <button
+                      type="button"
+                      className="provider-button provider-google"
+                      onClick={() => {
+                        void signInWithGoogle()
+                      }}
+                      disabled={!supabaseConfigured}
+                      aria-label="Google ile giriş yap"
+                    >
+                      Google ile giriş
+                    </button>
+                    {lemonSqueezyCheckoutUrl ? (
+                      <a
+                        className="provider-button provider-premium"
+                        href={lemonSqueezyCheckoutUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Premium (Lemon Squeezy)
+                      </a>
+                    ) : null}
+                  </div>
+                  <a className="signup-plans-link" href="#pricing">
+                    Planları gör
+                  </a>
                 </div>
-
-                <form
-                  className="signup-email"
-                  aria-label="Email sign up"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    setSignupEmail('')
-                  }}
-                >
-                  <input
-                    value={signupEmail}
-                    onChange={(event) => setSignupEmail(event.target.value)}
-                    placeholder="E-posta ile kayıt ol"
-                    inputMode="email"
-                    autoComplete="email"
-                  />
-                  <button type="submit">Kayıt Ol</button>
-                </form>
               </div>
             )}
 
@@ -918,11 +928,16 @@ function App() {
             </form>
           </section>
 
-          <section className="panel marketing-panel" aria-labelledby="pricing-title">
+          <section className="panel marketing-panel" id="pricing" aria-labelledby="pricing-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Simple pricing</p>
-                <h2 id="pricing-title">Pick a plan that matches your pace</h2>
+                <p className="eyebrow">Lemon Squeezy ile güvenli ödeme</p>
+                <h2 id="pricing-title">Planlar ve premium üyelik</h2>
+                <p className="pricing-deck">
+                  Ücretsiz kullanım için <strong>Google ile giriş</strong> yap. Premium abonelik ödemesi{' '}
+                  <strong>Lemon Squeezy</strong> üzerinden alınır; fiyat ve para birimi checkout sayfasında
+                  görünür.
+                </p>
               </div>
               <Sparkles size={18} aria-hidden="true" />
             </div>
@@ -931,22 +946,36 @@ function App() {
               {[
                 {
                   name: 'Starter',
-                  price: '$0',
-                  note: 'For consistent daily practice.',
-                  highlights: ['Reading desk', 'Vocabulary saving', 'Basic chat corrections'],
+                  price: 'Ücretsiz',
+                  suffix: '',
+                  note: 'Okuma, kelime kaydı ve temel sohbet düzeltmeleri — hesap için Google ile giriş.',
+                  highlights: [
+                    'Okuma masası ve seviye uyumlu metinler',
+                    'Tek dokunuşla kelime kaydı',
+                    'Sınırlı coach sohbeti',
+                  ],
+                  variant: 'free' as const,
                 },
                 {
                   name: 'Plus',
-                  price: '$9',
-                  note: 'For faster fluency loops.',
-                  highlights: ['Unlimited coach turns', 'Listening mode', 'Progress insights'],
+                  price: 'Premium',
+                  suffix: '/ abonelik',
+                  note: 'Gelişmiş coach, dinleme ve ilerleme — ödeme Lemon Squeezy sandbox veya canlı checkout’ta.',
+                  highlights: [
+                    'Sınırsız coach turu (plan kapsamında)',
+                    'Dinleme modu ve içgörüler',
+                    'Öncelikli özellik güncellemeleri',
+                  ],
+                  variant: 'premium' as const,
                   featured: true,
                 },
                 {
                   name: 'Studio',
-                  price: '$19',
-                  note: 'For power learners and creators.',
-                  highlights: ['Multiple goals', 'Advanced feedback', 'Priority features'],
+                  price: 'Özel',
+                  suffix: '',
+                  note: 'Takımlar ve içerik üreticileri için — yakında.',
+                  highlights: ['Çoklu hedef', 'Gelişmiş geri bildirim', 'Öncelikli destek'],
+                  variant: 'soon' as const,
                 },
               ].map((plan) => (
                 <article
@@ -957,7 +986,9 @@ function App() {
                     <strong>{plan.name}</strong>
                     <div className="price-line">
                       <span className="price">{plan.price}</span>
-                      <span className="price-suffix">/month</span>
+                      {plan.suffix ? (
+                        <span className="price-suffix">{plan.suffix}</span>
+                      ) : null}
                     </div>
                     <p>{plan.note}</p>
                   </header>
@@ -970,6 +1001,28 @@ function App() {
                       </li>
                     ))}
                   </ul>
+
+                  {plan.variant === 'free' ? (
+                    <a className="price-card-cta price-card-cta-secondary" href="#dashboard">
+                      Ücretsiz başla
+                    </a>
+                  ) : null}
+                  {plan.variant === 'premium' && lemonSqueezyCheckoutUrl ? (
+                    <a
+                      className="price-card-cta"
+                      href={lemonSqueezyCheckoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Premium’a geç — Lemon Squeezy
+                    </a>
+                  ) : null}
+                  {plan.variant === 'premium' && !lemonSqueezyCheckoutUrl ? (
+                    <p className="price-card-missing">Checkout URL yapılandırın (.env.local).</p>
+                  ) : null}
+                  {plan.variant === 'soon' ? (
+                    <span className="price-card-soon">Çok yakında</span>
+                  ) : null}
                 </article>
               ))}
             </div>
