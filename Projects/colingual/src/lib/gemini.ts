@@ -16,15 +16,8 @@ export type CoachContext = {
   articleTitle: string
 }
 
-function canUseBrowserGeminiKey(): boolean {
-  return Boolean(import.meta.env.DEV && import.meta.env.VITE_GEMINI_API_KEY?.trim())
-}
-
 export function isGeminiAiConfigured(): boolean {
-  return Boolean(
-    canUseBrowserGeminiKey() ||
-      import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim(),
-  )
+  return Boolean(import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim())
 }
 
 function buildSystemInstruction(context: CoachContext): string {
@@ -57,55 +50,6 @@ function toGeminiContents(turns: CoachTurn[]): { role: string; parts: { text: st
   }
 
   return contents
-}
-
-async function generateViaGoogleAiStudio(
-  model: string,
-  systemInstruction: string,
-  contents: { role: string; parts: { text: string }[] }[],
-): Promise<string> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim()
-  if (!apiKey) {
-    throw new Error('missing_api_key')
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model,
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      contents,
-      generationConfig: {
-        temperature: 0.65,
-        maxOutputTokens: 1024,
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text()
-    throw new Error(`gemini_http_${response.status}: ${errText.slice(0, 200)}`)
-  }
-
-  const data = (await response.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[]
-    error?: { message?: string }
-  }
-
-  if (data.error?.message) {
-    throw new Error(data.error.message)
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
-  if (!text.trim()) {
-    throw new Error('empty_response')
-  }
-
-  return text.trim()
 }
 
 async function generateViaAssistantProxy(
@@ -144,9 +88,8 @@ async function generateViaAssistantProxy(
 
 /**
  * Calls Gemini **gemini-2.5-flash** (unless overridden by `VITE_GEMINI_MODEL`).
- * Configure either `VITE_AI_ASSISTANT_ENDPOINT` (your server forwards to Gemini with the same model id)
- * or `VITE_GEMINI_API_KEY` for local Vite dev only. Production builds never call Gemini
- * directly from the browser because VITE_ values are public client configuration.
+ * Configure `VITE_AI_ASSISTANT_ENDPOINT` so your server forwards to Gemini with the same model id.
+ * Gemini provider keys must stay on the server because VITE_ values are public client configuration.
  */
 export async function generateCoachReply(
   turns: CoachTurn[],
@@ -161,11 +104,7 @@ export async function generateCoachReply(
     return generateViaAssistantProxy(model, systemInstruction, contents)
   }
 
-  if (!canUseBrowserGeminiKey()) {
-    throw new Error('browser_gemini_key_disabled')
-  }
-
-  return generateViaGoogleAiStudio(model, systemInstruction, contents)
+  throw new Error('missing_proxy')
 }
 
 export function offlineCoachFallback(learnerText: string): string {
