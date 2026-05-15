@@ -16,9 +16,13 @@ export type CoachContext = {
   articleTitle: string
 }
 
+function canUseBrowserGeminiKey(): boolean {
+  return Boolean(import.meta.env.DEV && import.meta.env.VITE_GEMINI_API_KEY?.trim())
+}
+
 export function isGeminiAiConfigured(): boolean {
   return Boolean(
-    import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
+    canUseBrowserGeminiKey() ||
       import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim(),
   )
 }
@@ -140,8 +144,9 @@ async function generateViaAssistantProxy(
 
 /**
  * Calls Gemini **gemini-2.5-flash** (unless overridden by `VITE_GEMINI_MODEL`).
- * Configure either `VITE_GEMINI_API_KEY` (browser — dev only; use a backend proxy in production)
- * or `VITE_AI_ASSISTANT_ENDPOINT` (your server forwards to Gemini with the same model id).
+ * Configure either `VITE_AI_ASSISTANT_ENDPOINT` (your server forwards to Gemini with the same model id)
+ * or `VITE_GEMINI_API_KEY` for local Vite dev only. Production builds never call Gemini
+ * directly from the browser because VITE_ values are public client configuration.
  */
 export async function generateCoachReply(
   turns: CoachTurn[],
@@ -154,6 +159,10 @@ export async function generateCoachReply(
   const proxyUrl = import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim()
   if (proxyUrl) {
     return generateViaAssistantProxy(model, systemInstruction, contents)
+  }
+
+  if (!canUseBrowserGeminiKey()) {
+    throw new Error('browser_gemini_key_disabled')
   }
 
   return generateViaGoogleAiStudio(model, systemInstruction, contents)
