@@ -31,7 +31,7 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_NEWS_SOURCE_ENDPOINT=
 # Chat coach: uses Google Gemini **gemini-2.5-flash** by default.
-# Option A — browser key (dev only; prefer Option B in production):
+# Option A — browser key (dev only; production builds ignore this):
 VITE_GEMINI_API_KEY=
 # Optional override of model id (default: gemini-2.5-flash)
 VITE_GEMINI_MODEL=
