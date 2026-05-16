@@ -16,11 +16,20 @@ export type CoachContext = {
   articleTitle: string
 }
 
+function getAssistantProxyEndpoint(): string {
+  return import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() ?? ''
+}
+
+function getDevGeminiApiKey(): string {
+  if (!import.meta.env.DEV) {
+    return ''
+  }
+
+  return import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? ''
+}
+
 export function isGeminiAiConfigured(): boolean {
-  return Boolean(
-    import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
-      import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim(),
-  )
+  return Boolean(getAssistantProxyEndpoint() || getDevGeminiApiKey())
 }
 
 function buildSystemInstruction(context: CoachContext): string {
@@ -60,9 +69,9 @@ async function generateViaGoogleAiStudio(
   systemInstruction: string,
   contents: { role: string; parts: { text: string }[] }[],
 ): Promise<string> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim()
+  const apiKey = getDevGeminiApiKey()
   if (!apiKey) {
-    throw new Error('missing_api_key')
+    throw new Error(import.meta.env.DEV ? 'missing_api_key' : 'browser_api_key_disabled_in_production')
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
@@ -109,7 +118,7 @@ async function generateViaAssistantProxy(
   systemInstruction: string,
   contents: { role: string; parts: { text: string }[] }[],
 ): Promise<string> {
-  const endpoint = import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim()
+  const endpoint = getAssistantProxyEndpoint()
   if (!endpoint) {
     throw new Error('missing_proxy')
   }
@@ -140,7 +149,7 @@ async function generateViaAssistantProxy(
 
 /**
  * Calls Gemini **gemini-2.5-flash** (unless overridden by `VITE_GEMINI_MODEL`).
- * Configure either `VITE_GEMINI_API_KEY` (browser — dev only; use a backend proxy in production)
+ * Configure either `VITE_GEMINI_API_KEY` (browser — dev only and ignored in production)
  * or `VITE_AI_ASSISTANT_ENDPOINT` (your server forwards to Gemini with the same model id).
  */
 export async function generateCoachReply(
@@ -151,7 +160,7 @@ export async function generateCoachReply(
   const systemInstruction = buildSystemInstruction(context)
   const contents = toGeminiContents(turns)
 
-  const proxyUrl = import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim()
+  const proxyUrl = getAssistantProxyEndpoint()
   if (proxyUrl) {
     return generateViaAssistantProxy(model, systemInstruction, contents)
   }
