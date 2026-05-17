@@ -7,31 +7,46 @@ import {
   ChevronRight,
   CirclePlay,
   Clock3,
+  Flame,
+  Flag,
   Headphones,
+  Heart,
+  ImageIcon,
   Languages,
   LayoutDashboard,
+  Lock,
   LogOut,
   Mail,
+  MapPinned,
   MessageSquareText,
   Mic,
+  Play,
+  PlayCircle,
   Plus,
   Search,
   Send,
   Sparkles,
   Star,
+  ThumbsUp,
   Trophy,
   UserRound,
+  Users,
   Video,
 } from 'lucide-react'
 import './App.css'
 import { fetchDictionaryEntry, supportsDictionaryLanguage, type DictionaryEntry } from './lib/dictionary'
 import {
+  activeLearningUnit,
   articles,
-  languages,
+  communityPosts,
+  languagePartners,
   learningGoals,
+  languages,
+  lockedLearningUnit,
   levels,
   practiceModules,
   progressMetrics,
+  trendingTopics,
   type Article,
   type Level,
   type VocabularyItem,
@@ -122,6 +137,17 @@ function App() {
     () => new Set(savedWords.map((word) => word.term.toLowerCase())),
     [savedWords],
   )
+
+  const [navHash, setNavHash] = useState(
+    () => (typeof window !== 'undefined' ? window.location.hash || '#dashboard' : '#dashboard'),
+  )
+
+  useEffect(() => {
+    const syncHash = () => setNavHash(window.location.hash || '#dashboard')
+    syncHash()
+    window.addEventListener('hashchange', syncHash)
+    return () => window.removeEventListener('hashchange', syncHash)
+  }, [])
 
   useEffect(() => {
     if (!supabase) {
@@ -368,20 +394,26 @@ function App() {
           </div>
           <div>
             <strong>Colingual</strong>
-            <span>Language studio</span>
+            <span>Informed Lingua studio</span>
           </div>
         </div>
 
         <nav className="nav-list">
           {[
-            { label: 'Dashboard', icon: LayoutDashboard },
-            { label: 'Reading', icon: BookOpen },
-            { label: 'Vocabulary', icon: Brain },
-            { label: 'Chat', icon: MessageSquareText },
-            { label: 'Progress', icon: Trophy },
-            { label: 'Planlar', icon: Sparkles },
+            { hash: '#dashboard', label: 'Home', icon: LayoutDashboard },
+            { hash: '#reading', label: 'Media', icon: PlayCircle },
+            { hash: '#vocabulary', label: 'Words', icon: Brain },
+            { hash: '#chat', label: 'Tutor', icon: MessageSquareText },
+            { hash: '#progress', label: 'Progress', icon: Trophy },
+            { hash: '#learning-path', label: 'Path', icon: MapPinned },
+            { hash: '#community', label: 'Community', icon: Users },
+            { hash: '#pricing', label: 'Plans', icon: Sparkles },
           ].map((item) => (
-            <a key={item.label} href={`#${item.label === 'Planlar' ? 'pricing' : item.label.toLowerCase()}`}>
+            <a
+              key={item.hash}
+              href={item.hash}
+              className={navHash === item.hash ? 'nav-active' : undefined}
+            >
               <item.icon size={18} aria-hidden="true" />
               <span>{item.label}</span>
             </a>
@@ -391,20 +423,33 @@ function App() {
         <div className="sync-card">
           <span className={supabaseConfigured ? 'status-dot online' : 'status-dot'} />
           <div>
-            <strong>{supabaseConfigured ? 'Supabase connected' : 'Offline seed mode'}</strong>
-            <span>{supabaseConfigured ? 'Live data ready' : 'Add env values later'}</span>
+            <strong>{supabaseConfigured ? 'Connected' : 'Offline mode'}</strong>
+            <span>{supabaseConfigured ? 'Sync ready' : 'Seed content'}</span>
+          </div>
+        </div>
+
+        <div className="sidebar-footer-user">
+          <div className="sidebar-footer-avatar" aria-hidden="true">
+            <UserRound size={20} aria-hidden="true" />
+          </div>
+          <div className="sidebar-footer-meta">
+            <strong>{user ? userDisplayName : 'Guest learner'}</strong>
+            <span>
+              {level} • {targetLanguageOption?.label ?? targetLanguage}
+            </span>
           </div>
         </div>
       </aside>
 
-      <main className="workspace">
+      <div className="workspace-column">
+        <main className="workspace">
         <header className="topbar" id="dashboard">
           <div>
             <p className="eyebrow">Daily plan</p>
             <h1>Today&apos;s learning desk</h1>
           </div>
 
-          <div className="topbar-actions">
+          <div className="topbar-actions" id="profile">
             {user ? (
               <div className="signup-mini account-bar" aria-label="Account">
                 <div className="account-profile" aria-labelledby="account-profile-heading">
@@ -552,6 +597,113 @@ function App() {
               </div>
             </article>
           ))}
+        </section>
+
+        <div className="dashboard-quick-links">
+          <a href="#learning-path" className="dq-chip">
+            <MapPinned size={14} aria-hidden="true" />
+            Learning path
+          </a>
+          <a href="#community" className="dq-chip">
+            <Users size={14} aria-hidden="true" />
+            Community
+          </a>
+        </div>
+
+        <section className="learning-path-section" id="learning-path" aria-labelledby="lp-title">
+          <div className="learning-path-intro">
+            <p className="eyebrow">Curriculum</p>
+            <h2 id="lp-title">Your learning path</h2>
+            <p className="learning-path-lead">
+              Build vocabulary and grammar in units — progress here is illustrative until accounts sync to a backend.
+            </p>
+          </div>
+          <div className="learning-path-layout">
+            <div className="lp-column-main">
+              <article className="lp-unit-card">
+                <header className="lp-unit-header">
+                  <div className="lp-unit-header-text">
+                    <span className="lp-unit-label">{activeLearningUnit.unitLabel}</span>
+                    <h3>{activeLearningUnit.title}</h3>
+                    <p>{activeLearningUnit.description}</p>
+                  </div>
+                  <div className="lp-unit-ring" aria-hidden="true">
+                    <span>{activeLearningUnit.progressPct}%</span>
+                  </div>
+                </header>
+                <div className="lp-lesson-list">
+                  {activeLearningUnit.lessons.map((lesson) => (
+                    <div key={lesson.id} className={`lp-lesson lp-lesson--${lesson.state}`}>
+                      <div className="lp-lesson-icon">
+                        {lesson.state === 'done' ? (
+                          <Check size={18} aria-hidden="true" />
+                        ) : null}
+                        {lesson.state === 'current' ? (
+                          <Play size={18} aria-hidden="true" />
+                        ) : null}
+                        {lesson.state === 'locked' ? (
+                          lesson.category === 'Milestone' ? (
+                            <Flag size={18} aria-hidden="true" />
+                          ) : (
+                            <Lock size={18} aria-hidden="true" />
+                          )
+                        ) : null}
+                      </div>
+                      <div className="lp-lesson-body">
+                        <span className="lp-lesson-cat">{lesson.category}</span>
+                        <h4>{lesson.title}</h4>
+                        {lesson.description ? <p>{lesson.description}</p> : null}
+                      </div>
+                      {lesson.state === 'current' ? (
+                        <button type="button" className="lp-start-btn">
+                          Start Lesson
+                        </button>
+                      ) : null}
+                      {lesson.state === 'done' ? <span className="lp-lesson-meta">Review</span> : null}
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="lp-unit-card lp-unit-locked-card" aria-labelledby="lp-u2-title">
+                <header className="lp-unit-locked-head">
+                  <div>
+                    <span className="lp-unit-label muted">{lockedLearningUnit.unitLabel}</span>
+                    <h3 id="lp-u2-title">{lockedLearningUnit.title}</h3>
+                  </div>
+                  <Lock size={26} className="lp-lock-icon" aria-hidden="true" />
+                </header>
+              </article>
+            </div>
+
+            <aside className="lp-column-aside" aria-label="Path sidebar">
+              <div className="lp-widget lp-streak">
+                <Flame size={28} className="lp-flame" aria-hidden="true" />
+                <div>
+                  <strong className="lp-streak-num">14 Days</strong>
+                  <span className="lp-streak-label">Current streak</span>
+                </div>
+                <div className="lp-xp-bar-wrap">
+                  <div className="lp-xp-row">
+                    <span>Daily goal</span>
+                    <span className="lp-xp-val">30 / 50 XP</span>
+                  </div>
+                  <div className="lp-xp-track">
+                    <span style={{ width: '60%' }} />
+                  </div>
+                  <p className="lp-xp-hint">Complete one more lesson to hit your goal.</p>
+                </div>
+              </div>
+              <div className="lp-widget lp-ai-card">
+                <Sparkles size={24} aria-hidden="true" />
+                <h4>AI conversation practice</h4>
+                <p>Apply Unit 1 in a guided dialogue with the tutor.</p>
+                <a href="#chat" className="lp-ai-cta">
+                  Start simulation
+                </a>
+              </div>
+            </aside>
+          </div>
         </section>
 
         <div className="content-grid">
@@ -824,6 +976,141 @@ function App() {
           </section>
         </div>
 
+        <section id="community" className="community-hub" aria-labelledby="community-title">
+          <div className="community-hub-intro">
+            <p className="eyebrow">Community hub</p>
+            <h2 id="community-title">Moments &amp; questions</h2>
+            <p className="community-lead">
+              Share wins, ask for corrections, and learn with peers — posting is a demo until backend hooks exist.
+            </p>
+          </div>
+          <div className="community-hub-grid">
+            <div className="community-main">
+              <div className="community-composer panel">
+                <div className="cc-row">
+                  <div className="cc-avatar" aria-hidden="true">
+                    <UserRound size={20} />
+                  </div>
+                  <input
+                    className="cc-input"
+                    type="text"
+                    placeholder="Share a moment, question, or correction..."
+                    readOnly
+                  />
+                </div>
+                <div className="cc-toolbar">
+                  <div className="cc-tools">
+                    <button type="button" className="cc-tool" aria-label="Image">
+                      <ImageIcon size={18} />
+                    </button>
+                    <button type="button" className="cc-tool" aria-label="Voice">
+                      <Mic size={18} />
+                    </button>
+                    <button type="button" className="cc-tool" aria-label="Spell check">
+                      <Sparkles size={18} />
+                    </button>
+                  </div>
+                  <button type="button" className="cc-post">
+                    Post
+                  </button>
+                </div>
+              </div>
+
+              <div className="community-feed">
+                {communityPosts.map((post) => (
+                  <article key={post.id} className="community-post panel">
+                    <header className="cp-head">
+                      <div className="cp-author">
+                        <div className="cp-avatar" aria-hidden="true">
+                          {post.author.charAt(0)}
+                        </div>
+                        <div>
+                          <strong>{post.author}</strong>
+                          <p className="cp-meta">{post.meta}</p>
+                        </div>
+                      </div>
+                      <span className="cp-tag">{post.tagLabel}</span>
+                    </header>
+                    {post.correctionLead ? (
+                      <div className="cp-correction-box">
+                        <p className="cp-correction-lead">{post.correctionLead}</p>
+                        <p>{post.body}</p>
+                      </div>
+                    ) : (
+                      <div className="cp-body">
+                        <p>{post.body}</p>
+                        {post.kind === 'moment' ? (
+                          <div className="cp-moment-visual" role="img" aria-label={post.momentCaption}>
+                            <span>{post.momentCaption}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                    <footer className="cp-foot">
+                      <span className="cp-stat">
+                        <MessageSquareText size={16} aria-hidden="true" /> {post.statsLeft}
+                      </span>
+                      <span className="cp-stat">
+                        {post.kind === 'moment' ? (
+                          <Heart size={16} aria-hidden="true" />
+                        ) : (
+                          <ThumbsUp size={16} aria-hidden="true" />
+                        )}{' '}
+                        {post.statsRight}
+                      </span>
+                    </footer>
+                  </article>
+                ))}
+              </div>
+              <button type="button" className="community-load-more">
+                Load more
+              </button>
+            </div>
+
+            <aside className="community-aside">
+              <div className="panel cp-partners">
+                <header className="cp-partners-head">
+                  <h3>Language partners</h3>
+                  <button type="button" className="cp-see-all">
+                    See all
+                  </button>
+                </header>
+                <ul className="cp-partners-list">
+                  {languagePartners.map((p) => (
+                    <li key={p.id}>
+                      <div className="cp-partner-row">
+                        <div className="cp-partner-avatar-wrap">
+                          <span className="cp-partner-initial">{p.name.charAt(0)}</span>
+                          <span className={p.online ? 'cp-dot online' : 'cp-dot'} />
+                        </div>
+                        <div>
+                          <strong>{p.name}</strong>
+                          <p className="cp-partner-lang">
+                            N: {p.native} | L: {p.learning}
+                          </p>
+                        </div>
+                        <button type="button" className="cp-chat-btn" aria-label={`Message ${p.name}`}>
+                          <MessageSquareText size={18} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="panel cp-trending">
+                <h3>Trending topics</h3>
+                <div className="cp-tags">
+                  {trendingTopics.map((t) => (
+                    <button key={t} type="button" className="cp-tag-chip">
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
         <div className="marketing-grid" aria-label="Product details">
           <section className="panel marketing-panel" aria-labelledby="why-title">
             <div className="panel-heading">
@@ -1029,6 +1316,26 @@ function App() {
           </section>
         </div>
       </main>
+
+      <nav className="mobile-bottom-nav" aria-label="Mobile">
+        {[
+          { hash: '#dashboard', label: 'Home', Icon: LayoutDashboard },
+          { hash: '#reading', label: 'Media', Icon: PlayCircle },
+          { hash: '#vocabulary', label: 'Words', Icon: Brain },
+          { hash: '#chat', label: 'Tutor', Icon: MessageSquareText },
+          { hash: '#profile', label: 'Profile', Icon: UserRound },
+        ].map((item) => (
+          <a
+            key={item.hash}
+            href={item.hash}
+            className={navHash === item.hash ? 'nav-active' : undefined}
+          >
+            <item.Icon size={22} strokeWidth={2} aria-hidden="true" />
+            {item.label}
+          </a>
+        ))}
+      </nav>
+      </div>
     </div>
   )
 }

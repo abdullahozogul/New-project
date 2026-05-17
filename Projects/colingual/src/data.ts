@@ -286,3 +286,136 @@ export const practiceModules: PracticeModule[] = [
     icon: MessageSquareText,
   },
 ]
+
+export type CommunityPostKind = 'question' | 'moment' | 'correction'
+
+export type CommunityPost = {
+  id: string
+  kind: CommunityPostKind
+  author: string
+  meta: string
+  body: string
+  tagLabel: string
+  statsLeft?: string
+  statsRight?: string
+  correctionLead?: string
+  momentCaption?: string
+}
+
+export const communityPosts: CommunityPost[] = [
+  {
+    id: 'cp1',
+    kind: 'question',
+    author: 'Elena R.',
+    meta: '2 hours ago • Learning English',
+    body:
+      'Can someone explain the difference between "I have been living here" and "I lived here"? I always mix them up in conversation! 😩',
+    tagLabel: 'Question',
+    statsLeft: '4 Answers',
+    statsRight: '12 Helpful',
+  },
+  {
+    id: 'cp2',
+    kind: 'moment',
+    author: 'David K.',
+    meta: '5 hours ago • Learning Spanish',
+    body:
+      'Finally visited the local market and managed to order everything in Spanish without switching to English! Small wins! 🎉',
+    tagLabel: 'Moment',
+    statsLeft: '2 Comments',
+    statsRight: '24 Likes',
+    momentCaption: 'Market day',
+  },
+  {
+    id: 'cp3',
+    kind: 'correction',
+    author: 'Sophie L.',
+    meta: 'Yesterday • Learning French',
+    body:
+      "Aujourd'hui, je suis allé au parc avec mon chien. Le soleil a été très chaud et nous avons couru beaucoup.",
+    tagLabel: 'Correction',
+    correctionLead: 'Please correct my journal entry:',
+    statsLeft: 'Add Correction',
+    statsRight: '1 Correction received',
+  },
+]
+
+export type LanguagePartner = {
+  id: string
+  name: string
+  native: string
+  learning: string
+  online: boolean
+}
+
+export const languagePartners: LanguagePartner[] = [
+  { id: 'p1', name: 'Carlos M.', native: 'ES', learning: 'EN', online: true },
+  { id: 'p2', name: 'Yuki T.', native: 'JP', learning: 'EN', online: true },
+  { id: 'p3', name: 'Marc D.', native: 'FR', learning: 'EN', online: false },
+]
+
+export const trendingTopics = ['#GrammarHelp', '#Idioms', '#Pronunciation', '#TravelVocab']
+
+export type LearningLessonState = 'done' | 'current' | 'locked'
+
+export type LearningLesson = {
+  id: string
+  category: string
+  title: string
+  description?: string
+  state: LearningLessonState
+}
+
+export type LearningUnit = {
+  id: string
+  unitLabel: string
+  title: string
+  description: string
+  progressPct: number
+  lessons: LearningLesson[]
+}
+
+export const activeLearningUnit: LearningUnit = {
+  id: 'u1',
+  unitLabel: 'Unit 1',
+  title: 'The Foundation of Discourse',
+  description:
+    'Master essential vocabulary and present-tense structures to comprehend basic news and introduce professional concepts.',
+  progressPct: 80,
+  lessons: [
+    {
+      id: 'l1',
+      category: 'Vocabulary',
+      title: 'Core Professional Nouns',
+      state: 'done',
+    },
+    {
+      id: 'l2',
+      category: 'Grammar',
+      title: 'Present Tense Dynamics',
+      description: 'Learn to conjugate regular verbs to describe ongoing current events.',
+      state: 'current',
+    },
+    {
+      id: 'l3',
+      category: 'Speaking',
+      title: 'Discussing the News',
+      state: 'locked',
+    },
+    {
+      id: 'l4',
+      category: 'Milestone',
+      title: 'Unit 1 Assessment',
+      state: 'locked',
+    },
+  ],
+}
+
+export const lockedLearningUnit: LearningUnit = {
+  id: 'u2',
+  unitLabel: 'Unit 2 • Locked',
+  title: 'Navigating the Economy',
+  description: '',
+  progressPct: 0,
+  lessons: [],
+}
