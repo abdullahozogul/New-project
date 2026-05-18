@@ -1,0 +1,35 @@
+.skills-workbench__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.skills-workbench__tabs button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.skills-workbench__tabs button.active {
+  border-color: var(--focus);
+  background: rgba(47, 95, 187, 0.1);
+  color: var(--focus);
+}
+
+.skills-workbench__reading {
+  display: grid;
+  gap: 1rem;
+}
+
+.skills-workbench__ai-tip {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(47, 95, 187, 0.08);
+  font-size: 0.82rem;
+}

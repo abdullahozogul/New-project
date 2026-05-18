@@ -1,0 +1,39 @@
+.skill-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 88px;
+}
+
+.skill-ring__track {
+  stroke: rgba(21, 32, 43, 0.1);
+}
+
+.skill-ring__progress {
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.skill-ring__label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.skill-ring__label strong {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.skill-ring__label span {
+  color: var(--muted);
+}
+
+.skill-ring__label em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--focus);
+}

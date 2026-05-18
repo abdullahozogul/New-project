@@ -1,0 +1,33 @@
+.daily-missions h3 {
+  margin: 0 0 0.75rem;
+}
+
+.daily-missions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.daily-missions li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.daily-missions__done {
+  border-color: rgba(22, 163, 74, 0.35);
+  background: rgba(22, 163, 74, 0.06);
+}
+
+.daily-missions em {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
+}

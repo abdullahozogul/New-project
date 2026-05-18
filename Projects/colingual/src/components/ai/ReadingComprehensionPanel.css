@@ -1,0 +1,18 @@
+.reading-comprehension__list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.reading-comprehension__error {
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
+.reading-comprehension .panel-heading button {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+}

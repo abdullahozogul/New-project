@@ -1,0 +1,53 @@
+.speaking-recorder__prompt {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.speaking-recorder__timer {
+  margin: 0.5rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.speaking-recorder__transcript {
+  margin: 0 0 0.65rem;
+  padding: 0.55rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+
+.speaking-recorder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.speaking-recorder__actions button {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.speaking-recorder__record {
+  background: #16a34a !important;
+  border-color: #16a34a !important;
+  color: #fff !important;
+}
+
+.speaking-recorder__submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

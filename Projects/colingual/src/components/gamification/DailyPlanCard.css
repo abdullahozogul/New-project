@@ -1,0 +1,42 @@
+.daily-plan-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+  background: linear-gradient(145deg, rgba(47, 95, 187, 0.06), #fff);
+}
+
+.daily-plan-card h3 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 1rem;
+}
+
+.daily-plan-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.daily-plan-card__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.daily-plan-card__list em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.daily-plan-card__next {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.85rem 0 0;
+  font-size: 0.82rem;
+  color: var(--focus);
+  font-weight: 600;
+}

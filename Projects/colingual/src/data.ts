@@ -35,6 +35,13 @@ export type Article = {
   imageTone: 'mint' | 'coral' | 'blue' | 'gold' | 'violet'
   paragraphs: string[]
   vocabulary: VocabularyItem[]
+  /** Groups CEFR variants of the same live news story. */
+  storyId?: string
+  isLive?: boolean
+  sourceUrl?: string
+  sourceTitle?: string
+  readingPurpose?: string
+  grammarUsed?: string[]
 }
 
 export type ProgressMetric = {

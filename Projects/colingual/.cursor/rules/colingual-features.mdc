@@ -1,0 +1,78 @@
+---
+description: CEFR beceri UI, gamification, AI entegrasyonu ve bileşen kuralları
+globs: src/components/**/*,src/hooks/**/*,src/stores/**/*,src/services/**/*,src/config/**/*
+alwaysApply: false
+---
+
+# Colingual — özellikler ve bileşenler
+
+## Tipler
+
+```typescript
+type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+type Skill = 'reading' | 'writing' | 'listening' | 'speaking';
+```
+
+Kaynak: `src/types/index.ts`. Uygulama `Level` = A1–C1 (`data.ts`); roadmap C2 gösterir.
+
+## Dashboard (`src/components/dashboard/`)
+
+- **CEFRRoadmap:** A1→C2; tamamlanan / aktif (pulse) / kilitli (opacity)
+- **SkillProgressRing:** SVG; reading=mavi, writing=mor, listening=turuncu, speaking=yeşil
+- **SkillRadarChart:** Recharts; `useProgressStore` ile besle
+- **DailyPlanCard:** `useLearningPath` — zayıf beceri ağırlıklı günlük plan
+
+## Beceri atölyesi (`src/components/skills/SkillsWorkbench.tsx`)
+
+Sekmeler: Okuma · Yazma · Dinleme · Konuşma (`#skills`).
+
+| Beceri | Bileşenler |
+|--------|------------|
+| Reading | `ReadingPassage`, `AnnotationLayer`, kelime tıklama → sözlük |
+| Writing | `WritingEditor`, `GrammarHighlighter`, `fetchWritingFeedback` |
+| Listening | `AudioPlayer` (ElevenLabs/OpenAI + speechSynthesis fallback), `TranscriptViewer`, `TTSPlayer` |
+| Speaking | `SpeakingRecorder`, `WaveformVisualizer`, `fetchSpeakingEvaluation` |
+
+Okuma panelinde (`App.tsx` `#read`): mavi **visual-band** placeholder kaldırıldı; sadece `media-actions` + `AudioPlayer`.
+
+## Gamification (`src/components/gamification/`)
+
+- **XP:** `src/services/xpSystem.ts`, `XPBar`, `LevelUpModal`, `XPBreakdown`
+- **Streak:** `useStreak`, `StreakDisplay`, `StreakProtectModal` (yalnızca risk varken)
+- **Badges:** `src/config/badges.ts`, `BadgeGrid`
+- **DailyMissions**, **WeeklyChallenge**
+
+Oturum kaydı: `useProgressStore.recordSession(skill, score?)` — dinleme/kelime/koç vb. tetikleyiciler `App.tsx` içinde.
+
+## AI (`src/services/aiService.ts`)
+
+| Özellik | Endpoint / yöntem |
+|---------|-------------------|
+| Yazma geri bildirim | `POST /api/ai/writing-feedback` (dev heuristic; Gemini genişletilebilir) |
+| Konuşma değerlendirme | `fetchSpeakingEvaluation` → Gemini JSON |
+| Okuma soruları | `generateComprehensionQuestions` |
+| Koç / roleplay | `generateCoachReply` + `lessonScenarios` |
+| Canlı haber CEFR | `buildCefrNewsBundle` — `src/lib/cefrNews.ts` |
+
+**WritingFeedbackPanel:** grammar / vocabulary / cohesion renkleri.  
+**SpeakingFeedbackCard:** CountUp puanlar, slide-up `FeedbackOverlay`.  
+**ReadingComprehensionPanel:** `ExerciseCard` + Gemini soru listesi.
+
+## SRS (`src/services/srsEngine.ts`, `src/components/srs/`)
+
+- SM-2 tarzı `reviewCard(card, quality)`
+- **ReviewSessionView:** kart kuyruğu; selector = `cards` + `cardsDueForReview(cards)` (store içinde `dueCards()` çağırma)
+- **RetentionGraph:** son 30 gün
+- Kelime kaydedince `useSRSStore.addCard` (`App.tsx` `toggleWord`)
+
+## Mikro-etkileşimler
+
+- `ExerciseCard` (framer-motion): doğru/yanlış animasyon
+- `ProgressBar`, `FeedbackOverlay` (slide-up, modal değil)
+- Beceri yüzeyleri: `skills-themes.css` gradient (`skill-surface--reading` vb.)
+
+## Yapılmamalı
+
+- Her CEFR seviyesi için ayrı sidebar hikâye satırı (tek `storyId` başına bir satır)
+- Seed makaleleri queue’da `article.id` ile çoğaltmak (`seedStoryBundles` kullan)
+- Canlı haber metninde gereksiz büyük medya placeholder geri eklemek (kullanıcı kaldırdı)

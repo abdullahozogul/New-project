@@ -1,0 +1,25 @@
+.cefr-dashboard__rings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+@media (min-width: 720px) {
+  .cefr-dashboard__rings {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.cefr-dashboard__grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .cefr-dashboard__grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: start;
+  }
+}

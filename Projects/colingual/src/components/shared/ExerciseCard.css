@@ -1,0 +1,40 @@
+.exercise-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+  background: #fff;
+}
+
+.exercise-card--correct {
+  animation: exercise-flash-green 0.45s ease;
+}
+
+.exercise-card--wrong {
+  border-color: #dc2626;
+  animation: exercise-shake 0.4s ease;
+}
+
+@keyframes exercise-flash-green {
+  0% {
+    background: #fff;
+  }
+  40% {
+    background: rgba(22, 163, 74, 0.12);
+  }
+  100% {
+    background: #fff;
+  }
+}
+
+@keyframes exercise-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}

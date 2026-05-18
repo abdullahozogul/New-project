@@ -1,0 +1,26 @@
+# Colingual — Cursor rules (özet)
+# Detaylı kurallar: .cursor/rules/*.mdc
+
+## Proje
+AI destekli CEFR dil öğrenme · React 19 + TypeScript + Vite · Zustand · Gemini
+
+## Her zaman uygula
+- `.cursor/rules/colingual-project.mdc` — stack, klasörler, kod kuralları
+- `.cursor/rules/docs.mdc` — README / entegrasyonlar
+- `.cursor/rules/news-scraping.mdc` — canlı haber RSS + CEFR bundle
+
+## Dosyaya göre
+- UI / gamification / AI / SRS → `colingual-features.mdc`
+- TTS (plan) → `colingual-tts.mdc`
+
+## Kritik ürün kuralları
+1. Aynı hikâye: `storyId` sabit, seviye değişince sadece `variants[level]` metni değişir (`seedStoryBundles`, `buildCefrNewsBundle`).
+2. Sidebar: bir satır = bir hikâye, seviye başına ayrı satır değil.
+3. API anahtarlarını commit etme; prod proxy kullan.
+4. Min touch 44px; ARIA + keyboard.
+5. Geçersiz HTML/JSX (`motion.div` import etmeden) kullanma.
+
+## Komutlar
+npm run dev    # http://localhost:5173 veya 5174
+npm run build
+python scraping/news_rss.py  # RSS debug

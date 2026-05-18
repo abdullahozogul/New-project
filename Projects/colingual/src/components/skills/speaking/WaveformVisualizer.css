@@ -1,0 +1,7 @@
+.waveform-visualizer {
+  width: 100%;
+  max-width: 100%;
+  height: 64px;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.06);
+}

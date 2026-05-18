@@ -1,0 +1,27 @@
+.review-card__face {
+  width: 100%;
+  min-height: 120px;
+  margin: 0.65rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 1.05rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.review-card__rates {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.review-card__rates button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}

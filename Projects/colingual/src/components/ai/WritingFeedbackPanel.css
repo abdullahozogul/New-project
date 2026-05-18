@@ -1,0 +1,30 @@
+.writing-feedback-panel {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.85rem;
+}
+
+.writing-feedback-panel header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.writing-feedback-panel__score {
+  color: #7c3aed;
+  font-weight: 700;
+}
+
+.writing-feedback-panel ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.writing-feedback-panel li span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}

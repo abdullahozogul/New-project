@@ -1,0 +1,209 @@
+.cefr-levels-panel {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.cefr-levels-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.cefr-levels-head h3 {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+
+.cefr-levels-lead {
+  margin: 8px 0 0;
+  max-width: 52ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.cefr-levels-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.cefr-levels-tabs button {
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 800;
+}
+
+.cefr-levels-tabs button.active {
+  color: #ffffff;
+  background: var(--primary);
+}
+
+.cefr-levels-tabs button[aria-selected='true'] {
+  color: #ffffff;
+  background: var(--primary);
+}
+
+.cefr-level-block {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  animation: cefr-panel-in 0.2s ease;
+}
+
+@keyframes cefr-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cefr-level-block--active {
+  border-color: rgba(17, 107, 92, 0.45);
+  box-shadow: 0 0 0 1px rgba(17, 107, 92, 0.12);
+  background: #ffffff;
+}
+
+.cefr-level-block-head {
+  margin-bottom: 12px;
+}
+
+.cefr-level-block-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cefr-level-badge {
+  min-width: 40px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.cefr-level-block--a1 .cefr-level-badge {
+  background: #2d8f6f;
+}
+
+.cefr-level-block--a2 .cefr-level-badge {
+  background: #3a9b7a;
+}
+
+.cefr-level-block--b1 .cefr-level-badge {
+  background: #116b5c;
+}
+
+.cefr-level-block--b2 .cefr-level-badge {
+  background: #0f5a4e;
+}
+
+.cefr-level-block--c1 .cefr-level-badge {
+  background: #0a443b;
+}
+
+.cefr-level-meta-pill {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #31404d;
+  background: #eef2f6;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cefr-level-block h4 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.cefr-level-deck {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cefr-level-purpose {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #31404d;
+}
+
+.cefr-level-purpose-label {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.cefr-grammar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cefr-grammar-tags li {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f5a4e;
+  background: rgba(17, 107, 92, 0.1);
+}
+
+.cefr-level-body {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .cefr-levels-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cefr-levels-tabs {
+    grid-template-columns: repeat(5, minmax(42px, 1fr));
+  }
+
+  .cefr-level-block h4 {
+    font-size: 19px;
+  }
+}

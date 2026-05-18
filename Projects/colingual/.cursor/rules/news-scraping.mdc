@@ -1,0 +1,17 @@
+---
+description: Live news ingestion and CEFR adaptation for Colingual reading
+globs: src/lib/newsFeed.ts,src/lib/cefrNews.ts,scraping/**,vite.config.ts
+---
+
+# Colingual live news
+
+When adding or changing news ingestion:
+
+1. Prefer RSS/API sources (Google News RSS via dev `/api/news/headlines`, optional `VITE_NEWS_SOURCE_ENDPOINT`, or `NEWS_SOURCE_API_KEY` for GNews).
+2. Track seen headline IDs in `localStorage` so "New story" returns different articles.
+3. One `NewsStoryBundle` per headline: same `storyId`, variants for A1–C1 via Gemini (`buildCefrNewsBundle`).
+4. Level buttons must switch CEFR variant without changing `storyId`.
+5. Target `tr`: use `src/lib/ttflTurkishCefrPrompt.ts` (grammar-constrained TTFL model); Turkish RSS via `?lang=tr`.
+6. Operator debugging: `python scraping/news_rss.py`.
+
+Reference: [AI-Cursor-Scraping-Assistant](https://github.com/TheWebScrapingClub/AI-Cursor-Scraping-Assistant) for scraping patterns; Colingual uses RSS + Gemini rather than Scrapy in the browser.

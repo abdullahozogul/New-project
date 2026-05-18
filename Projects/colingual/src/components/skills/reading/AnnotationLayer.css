@@ -1,0 +1,77 @@
+.annotation-layer {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: rgba(47, 95, 187, 0.04);
+}
+
+.annotation-layer header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+}
+
+.annotation-layer__form {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.annotation-layer__form input,
+.annotation-layer__form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+}
+
+.annotation-layer__form button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--focus);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.annotation-layer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.annotation-layer__list li {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: #fff;
+}
+
+.annotation-layer__list blockquote {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  border-left: 3px solid var(--focus);
+  padding-left: 0.5rem;
+}
+
+.annotation-layer__list p {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.annotation-layer__list button {
+  min-height: 44px;
+  min-width: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+}

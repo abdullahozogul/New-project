@@ -1,0 +1,8 @@
+.retention-graph {
+  min-height: 200px;
+}
+
+.retention-graph__empty {
+  font-size: 0.85rem;
+  color: var(--muted);
+}

@@ -1,0 +1,32 @@
+.grammar-highlighter {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.grammar-highlighter li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  border-left: 3px solid transparent;
+}
+
+.grammar-issue--grammar {
+  background: rgba(220, 38, 38, 0.08);
+  border-left-color: #dc2626;
+}
+
+.grammar-issue--vocab {
+  background: rgba(124, 58, 237, 0.08);
+  border-left-color: #7c3aed;
+}
+
+.grammar-issue--coherence {
+  background: rgba(234, 88, 12, 0.08);
+  border-left-color: #ea580c;
+}

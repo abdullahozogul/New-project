@@ -1,5 +1,46 @@
 ---
+description: Colingual dokümantasyon, entegrasyonlar ve ürün gereksinimleri
 alwaysApply: true
 ---
 
-The following documentation has all of our features and requirements for this project. Keep this in your memory so that you can stay alligned.
+# Colingual — dokümantasyon özeti
+
+Tam README: proje kökünde `README.md`.
+
+## Çekirdek özellikler
+
+- **Okuma:** Seed + canlı haber; A1–C1 aynı hikâye (`seedStoryBundles.ts`, `cefrNews.ts`); seviye şeridi `LearnerSetupStrip`
+- **Pratik:** `SkillsWorkbench` (#skills), koç, senaryolar, study material, SRS review
+- **İlerleme:** CEFR dashboard, ClassroomIO yolu, AI course outline, XP/streak/badges
+- **Daha fazla:** ScholarShelf, community (demo), ecosystem panel
+
+## Harici pattern kaynakları
+
+| Kaynak | Colingual’da |
+|--------|----------------|
+| ClassroomIO | `classroomCourses.ts`, LearningPathSection |
+| ScholarShelf | `scholarShelf.ts`, #library |
+| CEFR-SP | `cefrAssess.ts`, CefrAssessmentBadge |
+| CEFR Classifier French | `/api/cefr/assess` |
+| language-lesson-chat | `lessonScenarios.ts`, coach context |
+| AI Study Material | `aiEducation.ts`, #study-material |
+| ACCG | `AiCourseOutlinePanel`, #course-ai |
+
+## Cursor rules dosyaları
+
+| Dosya | Ne zaman |
+|-------|----------|
+| `colingual-project.mdc` | Her oturum — stack, yapı, kod kuralları |
+| `colingual-features.mdc` | Bileşen / hook / store / service düzenlerken |
+| `colingual-tts.mdc` | TTS modülü eklerken |
+| `news-scraping.mdc` | Haber RSS, `cefrNews`, `vite.config` |
+| `.cursorrules` | Kısa özet (kök dizin) |
+
+## Env (`.env.local`)
+
+- `VITE_GEMINI_API_KEY` veya `VITE_AI_ASSISTANT_ENDPOINT` — koç + canlı CEFR
+- `NEWS_SOURCE_API_KEY` / `VITE_NEWS_SOURCE_ENDPOINT` — alternatif haber
+- `VITE_SUPABASE_*` — auth (opsiyonel)
+- Planlı TTS: `VITE_ELEVENLABS_API_KEY`, `VITE_OPENAI_API_KEY` — bkz. `colingual-tts.mdc`
+
+Değişiklik yaparken README entegrasyon tablosunu ve ilgili `.mdc` dosyasını güncel tut.

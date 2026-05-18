@@ -1,0 +1,26 @@
+.skill-surface {
+  border-radius: 14px;
+  padding: 1rem;
+  border: 1px solid var(--line);
+}
+
+.skill-surface--reading {
+  background: linear-gradient(160deg, rgba(47, 95, 187, 0.08), #fff 55%);
+}
+
+.skill-surface--writing {
+  background: linear-gradient(160deg, rgba(124, 58, 237, 0.08), #fff 55%);
+}
+
+.skill-surface--listening {
+  background: linear-gradient(160deg, rgba(234, 88, 12, 0.08), #fff 55%);
+}
+
+.skill-surface--speaking {
+  background: linear-gradient(160deg, rgba(22, 163, 74, 0.08), #fff 55%);
+}
+
+.skills-workbench__tabs button {
+  min-height: 44px;
+  min-width: 44px;
+}

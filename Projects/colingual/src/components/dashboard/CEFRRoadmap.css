@@ -1,0 +1,72 @@
+.cefr-roadmap {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.cefr-roadmap__track {
+  display: flex;
+  gap: 0.65rem;
+  min-width: min(100%, 640px);
+}
+
+.cefr-milestone {
+  flex: 1;
+  min-width: 4.5rem;
+  min-height: 44px;
+  padding: 0.65rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.cefr-milestone--done {
+  border-color: rgba(47, 95, 187, 0.35);
+}
+
+.cefr-milestone--active {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(47, 95, 187, 0.15);
+  animation: cefr-pulse 2s ease-in-out infinite;
+}
+
+.cefr-milestone--locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cefr-milestone__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--focus);
+}
+
+.cefr-milestone--locked .cefr-milestone__dot {
+  background: var(--muted);
+}
+
+.cefr-milestone__level {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.cefr-milestone__hint {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+@keyframes cefr-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(47, 95, 187, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(47, 95, 187, 0.2);
+  }
+}

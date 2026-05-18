@@ -1,0 +1,67 @@
+.vocabulary-bank__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.vocabulary-bank__filters select {
+  min-height: 44px;
+  padding: 0 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.vocabulary-bank__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.vocabulary-bank__list li {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.vocabulary-bank__list button {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  padding: 0 0.65rem;
+  font: inherit;
+}
+
+.vocabulary-bank__list button:first-child {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+.vocabulary-bank__modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.vocabulary-bank__modal-head h3 {
+  margin: 0;
+}
+
+.vocabulary-bank__modal {
+  margin-top: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: rgba(47, 95, 187, 0.04);
+}
+
+.vocabulary-bank__modal button {
+  min-height: 44px;
+  margin-top: 0.5rem;
+}

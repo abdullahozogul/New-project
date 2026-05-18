@@ -1,0 +1,30 @@
+.speaking-feedback-card__scores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.speaking-feedback-card__scores div {
+  text-align: center;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.08);
+  font-size: 0.78rem;
+}
+
+.speaking-feedback-card__scores strong {
+  display: block;
+  font-size: 1.25rem;
+  color: #15803d;
+}
+
+.speaking-feedback-card ul {
+  margin: 0.25rem 0 0.65rem;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+}
+
+.speaking-feedback-card__model span {
+  font-weight: 600;
+}

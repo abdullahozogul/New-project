@@ -1,0 +1,78 @@
+---
+description: Colingual proje bağlamı, stack, klasör yapısı ve genel kod kuralları
+alwaysApply: true
+---
+
+# Colingual — AI destekli CEFR dil öğrenme
+
+## Stack (gerçek)
+
+- **React 19** + **TypeScript** + **Vite 8**
+- **Zustand** (`src/stores/`) — progress, user, SRS; `localStorage` persist
+- **Recharts** — radar / retention grafikleri
+- **Framer Motion** — `ExerciseCard` animasyonları
+- **Gemini** — canlı haber CEFR uyarlaması, koç, study material (`src/lib/gemini.ts`, `geminiCore.ts`)
+- **Supabase** (opsiyonel auth)
+- Dev API: `vite.config.ts` → `/api/news/headlines`, `/api/cefr/assess`, `/api/ai/writing-feedback`, `/api/gemini/generate`
+
+Henüz yok (plan): TanStack Query, React Hook Form, ElevenLabs/OpenAI TTS modülü — eklemeden önce `colingual-tts.mdc` ve sprint planına bak.
+
+## Ürün
+
+- CEFR **A1 → C2**; uygulama seviye şeridi şu an **A1–C1** (`src/data.ts` `Level`)
+- Dört beceri: reading · writing · listening · speaking
+- **Aynı hikâye, farklı CEFR metinleri:** `NewsStoryBundle` + `src/config/seedStoryBundles.ts`
+- Canlı haber: RSS → Gemini → `liveBundles`; sidebar `storyId` ile tek satır
+
+## Klasör yapısı (özet)
+
+```
+src/
+├── components/
+│   ├── skills/          # SkillsWorkbench, Reading/Writing/Listening/Speaking
+│   ├── dashboard/     # CEFRRoadmap, SkillProgressRing, SkillRadarChart
+│   ├── gamification/  # XPBar, Streak, Badges, DailyMissions, LevelUpModal
+│   ├── ai/            # WritingFeedbackPanel, SpeakingFeedbackCard, ReadingComprehension
+│   ├── srs/           # ReviewSessionView, RetentionGraph
+│   ├── vocabulary/    # VocabularyBank
+│   ├── reading/       # CefrLevelsPanel, CefrAssessmentBadge
+│   └── layout/        # TopBar, AppSidebar, LearnerSetupStrip
+├── config/            # seedStoryBundles, navigation, badges, lessonScenarios
+├── hooks/             # useLearningPath, useStreak, useReadingComprehension, useXpLevelUp
+├── stores/            # useProgressStore, useSRSStore, useUserStore
+├── services/          # aiService, srsEngine, xpSystem
+├── types/index.ts     # CEFRLevel, Skill, UserProgress, AI request types
+├── utils/             # cefrUtils, weakSkillDetector, difficultyAdapter
+└── lib/               # cefrNews, cefrAssess, gemini, scholarShelf, newsFeed
+```
+
+## Navigasyon
+
+- Sekmeler: `home` · `read` · `practice` · `progress` · `more` — `src/config/navigation.ts`
+- Deep link: `#skills`, `#library`, `#scenarios`, `#study-material`, `#course-ai`, `#learning-path`
+
+## Genel kod kuralları
+
+1. **TypeScript:** explicit tipler; `src/types/index.ts` ve `data.ts` ile uyumlu kal
+2. **Erişilebilirlik:** keyboard + `aria-*`; touch target **min 44×44px**
+3. **Loading / error:** async işlerde spinner/skeleton; AI/TTS hata → fallback, crash yok
+4. **Performans:** gereksiz re-render önle; Zustand selector’da her render’da yeni dizi üretme (`dueCards()` gibi)
+5. **i18n:** kullanıcı metinleri `src/constants/labels.ts` veya `t('key')`
+6. **Güvenlik:** API anahtarlarını commit etme; prod’da proxy/backend
+7. **Odaklı diff:** istenmeyen refactor veya doküman dosyası ekleme
+8. **React:** geçersiz `motion.div` kullanma — sadece `framer-motion` import edilmişse `motion.*`
+9. **Aynı hikâye:** seviye değişince `storyId` sabit, sadece `variants[level]` metni değişsin
+
+## Sprint durumu (kısa)
+
+| Sprint | Durum |
+|--------|--------|
+| 1 Foundation | ✅ types, stores, services |
+| 2 Dashboard | ✅ İlerleme sekmesi |
+| 3 Skill UI | ✅ SkillsWorkbench; okuma bandı placeholder kaldırıldı |
+| 4 Gamification | ✅ XP, streak, badges, weekly challenge |
+| 5 AI | ✅ kısmi — writing/speaking/comprehension; roleplay = ScenarioLessonPicker + coach |
+| 6 SRS | ✅ ReviewSession + RetentionGraph |
+| 7 TTS | ✅ modül + proxy; anahtar yoksa tarayıcı TTS |
+
+Detaylı özellik spesifikasyonu: `.cursor/rules/colingual-features.mdc`

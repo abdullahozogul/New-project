@@ -1,0 +1,39 @@
+.badge-grid-wrap h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.65rem;
+}
+
+.badge-tile {
+  min-height: 44px;
+  padding: 0.65rem;
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.badge-tile--earned {
+  opacity: 1;
+  border-style: solid;
+  border-color: rgba(47, 95, 187, 0.35);
+}
+
+.badge-tile__icon {
+  font-size: 1.35rem;
+}
+
+.badge-tile strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+}

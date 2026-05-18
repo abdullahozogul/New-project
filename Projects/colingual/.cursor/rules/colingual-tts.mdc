@@ -1,0 +1,65 @@
+---
+description: TTS entegrasyonu (ElevenLabs + OpenAI) — planlı; henüz src/services/tts yok
+globs: src/components/skills/listening/**/*,src/components/audio/**/*,src/services/tts/**/*,src/hooks/useTTS.ts
+alwaysApply: false
+---
+
+# Colingual — TTS (plan)
+
+**Durum:** `src/services/tts/` + `useTTS` + `TTSPlayer` + dev proxy `/api/tts/synthesize`. API anahtarı yoksa **Web Speech API** yedek (`AudioPlayer`, `speakArticle`).
+
+## Provider stratejisi
+
+| useCase | provider | not |
+|---------|----------|-----|
+| listening_content | ElevenLabs | uzun metin |
+| pronunciation | ElevenLabs | |
+| ui_feedback | OpenAI | kısa |
+| conversation | OpenAI | streaming |
+| word_definition | OpenAI | kısa |
+
+## Hedef dosyalar
+
+```
+src/
+├── services/tts/
+│   ├── ttsService.ts       # yönlendirme + fallback
+│   ├── elevenLabsProvider.ts
+│   ├── openaiTTSProvider.ts
+│   └── ttsCache.ts         # IndexedDB, 7 gün TTL
+├── types/tts.ts            # veya types/index.ts genişlet
+├── hooks/useTTS.ts
+└── components/audio/TTSPlayer.tsx
+```
+
+## CEFR hız eşlemesi
+
+```typescript
+// ElevenLabs örnek
+const SPEED_BY_CEFR: Record<CEFRLevel, number> = {
+  A1: 0.80, A2: 0.85, B1: 0.90, B2: 0.95, C1: 1.0, C2: 1.0,
+};
+```
+
+## Env (dev)
+
+```
+VITE_ELEVENLABS_API_KEY=
+VITE_OPENAI_API_KEY=
+# veya mevcut VITE_GEMINI_API_KEY / backend proxy — prod'da client'a gömme
+```
+
+## Entegrasyon noktaları
+
+- `AudioPlayer` → üretilen dinleme metnini `tts.listening()` ile oynat
+- `VocabularyBank` / sözlük → `tts.word()`
+- `ReadingPassage` kelime tooltip → isteğe bağlı hoparlör ikonu (`TTSPlayer` variant `inline`)
+
+## Kurallar
+
+1. Aynı metin+ses için **IndexedDB cache** (`ttsCache.ts`)
+2. Provider fail → diğer provider fallback
+3. `URL.revokeObjectURL` ile blob sızıntısını önle (`useTTS`)
+4. Prod: TTS anahtarları **backend proxy** üzerinden
+
+Tam referans implementasyon: kullanıcının orijinal `cursorrules` Bölüm 5 (Downloads).

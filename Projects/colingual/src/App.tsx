@@ -1,48 +1,38 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import {
+  BookMarked,
   BookOpen,
   Brain,
   Check,
   ChevronRight,
-  CirclePlay,
   Clock3,
-  Flame,
-  Flag,
   Headphones,
   Heart,
   ImageIcon,
   Languages,
-  LayoutDashboard,
-  Lock,
-  LogOut,
+  Loader2,
   Mail,
-  MapPinned,
   MessageSquareText,
   Mic,
-  Play,
-  PlayCircle,
   Plus,
+  RefreshCw,
   Search,
   Send,
   Sparkles,
   Star,
   ThumbsUp,
-  Trophy,
   UserRound,
-  Users,
   Video,
 } from 'lucide-react'
 import './App.css'
 import { fetchDictionaryEntry, supportsDictionaryLanguage, type DictionaryEntry } from './lib/dictionary'
 import {
-  activeLearningUnit,
   articles,
   communityPosts,
   languagePartners,
   learningGoals,
   languages,
-  lockedLearningUnit,
   levels,
   practiceModules,
   progressMetrics,
@@ -52,8 +42,62 @@ import {
   type VocabularyItem,
 } from './data'
 import { supabase, supabaseConfigured } from './lib/supabase'
+import { ScholarShelfPanel } from './components/library/ScholarShelfPanel'
+import { CefrAssessmentBadge } from './components/reading/CefrAssessmentBadge'
+import { CefrLevelsPanel } from './components/reading/CefrLevelsPanel'
+import { assessArticleParagraphs } from './lib/cefrAssess'
+import {
+  addToShelf,
+  loadShelf,
+  removeFromShelf,
+  shelfSummaryForCoach,
+  type ShelfItem,
+} from './lib/scholarShelf'
+import { seedStoryBundles } from './config/seedStoryBundles'
+import {
+  articleFromBundle,
+  availableLevelsForBundle,
+  buildCefrNewsBundle,
+  buildStoryQueue,
+  type NewsStoryBundle,
+} from './lib/cefrNews'
 import { generateCoachReply, isGeminiAiConfigured, offlineCoachFallback, resolveGeminiModel, type CoachTurn } from './lib/gemini'
+import { fetchLiveNewsHeadlines, loadSeenHeadlineIds } from './lib/newsFeed'
 import { getLemonSqueezyPremiumCheckoutUrl } from './lib/lemonSqueezy'
+import { TopBar } from './components/layout/TopBar'
+import { AppSidebar } from './components/layout/AppSidebar'
+import { LearnerSetupStrip } from './components/layout/LearnerSetupStrip'
+import { MobileTabBar } from './components/layout/MobileTabBar'
+import { HomeView } from './components/home/HomeView'
+import { CoachShelfPrompts } from './components/practice/CoachShelfPrompts'
+import { ScenarioLessonPicker } from './components/practice/ScenarioLessonPicker'
+import { StudyMaterialPanel } from './components/practice/StudyMaterialPanel'
+import { AiCourseOutlinePanel } from './components/progress/AiCourseOutlinePanel'
+import { LearningEcosystemPanel } from './components/more/LearningEcosystemPanel'
+import { getScenarioById } from './config/lessonScenarios'
+import { LearningPathSection } from './components/progress/LearningPathSection'
+import { CEFRDashboardSection } from './components/dashboard/CEFRDashboardSection'
+import { DailyMissions } from './components/gamification/DailyMissions'
+import { LevelUpModal } from './components/gamification/LevelUpModal'
+import { StreakProtectModal } from './components/gamification/StreakProtectModal'
+import { WeeklyChallenge } from './components/gamification/WeeklyChallenge'
+import { XPBreakdown } from './components/gamification/XPBreakdown'
+import { ReadingComprehensionPanel } from './components/ai/ReadingComprehensionPanel'
+import { SkillsWorkbench } from './components/skills/SkillsWorkbench'
+import { AudioPlayer } from './components/skills/listening/AudioPlayer'
+import { ReviewSessionView } from './components/srs/ReviewSessionView'
+import { RetentionGraph } from './components/srs/RetentionGraph'
+import { VocabularyBank } from './components/vocabulary/VocabularyBank'
+import { useXpLevelUp } from './hooks/useXpLevelUp'
+import { useSRSStore } from './stores/useSRSStore'
+import { levelFromAppLevel } from './utils/cefrUtils'
+import { localeToLanguage } from './utils/ttsUtils'
+import { isCloudTtsConfigured, tts } from './services/tts/ttsService'
+import { useStreak } from './hooks/useStreak'
+import { useProgressStore } from './stores/useProgressStore'
+import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
+import { VIEW_TITLES } from './config/navigation'
+import { useAppNavigation } from './hooks/useAppNavigation'
 
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
@@ -61,7 +105,13 @@ function App() {
   const [level, setLevel] = useState<Level>('B1')
   const [goal, setGoal] = useState(learningGoals[0])
   const [user, setUser] = useState<User | null>(null)
-  const [selectedArticleId, setSelectedArticleId] = useState('food-waste-b1')
+  const [selectedStoryKey, setSelectedStoryKey] = useState('city-garden')
+  const [liveBundles, setLiveBundles] = useState<NewsStoryBundle[]>([])
+  const [shelfItems, setShelfItems] = useState<ShelfItem[]>(() => loadShelf())
+  const [coachUsed, setCoachUsed] = useState(() => loadCoachUsed())
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [newsError, setNewsError] = useState<string | null>(null)
   const [selectedLexeme, setSelectedLexeme] = useState<string | null>(null)
   const [dictionaryCache, setDictionaryCache] = useState<Record<string, DictionaryEntry>>({})
   const [dictionaryStatus, setDictionaryStatus] = useState<
@@ -90,17 +140,152 @@ function App() {
     },
   ])
 
-  const matchingArticles = useMemo(() => {
-    const exact = articles.filter((article) => article.level === level)
-    return exact.length > 0 ? exact : articles
-  }, [level])
+  const storyBundles = useMemo(
+    () => [...liveBundles, ...seedStoryBundles],
+    [liveBundles],
+  )
 
-  const selectedArticle =
-    articles.find((article) => article.id === selectedArticleId) ?? matchingArticles[0]
+  const storyQueue = useMemo(
+    () => buildStoryQueue(liveBundles, seedStoryBundles, articles),
+    [liveBundles],
+  )
+
+  const selectedStoryBundle = useMemo(
+    () => storyBundles.find((bundle) => bundle.storyId === selectedStoryKey) ?? null,
+    [storyBundles, selectedStoryKey],
+  )
+
+  const readingLevels = useMemo(() => {
+    if (selectedStoryBundle) {
+      return availableLevelsForBundle(selectedStoryBundle)
+    }
+    const seed = articles.find(
+      (article) => article.id === selectedStoryKey || article.storyId === selectedStoryKey,
+    )
+    return seed ? [seed.level] : levels
+  }, [selectedStoryBundle, selectedStoryKey])
+
+  const effectiveLevel = useMemo(() => {
+    if (readingLevels.length === 0) {
+      return level
+    }
+    return readingLevels.includes(level) ? level : readingLevels[0]
+  }, [level, readingLevels])
+
+  const selectedArticle = useMemo(() => {
+    if (selectedStoryBundle) {
+      return (
+        articleFromBundle(selectedStoryBundle, effectiveLevel) ??
+        articleFromBundle(selectedStoryBundle, readingLevels[0] ?? 'B1') ??
+        articles[0]
+      )
+    }
+    const seed =
+      articles.find((article) => article.id === selectedStoryKey) ??
+      articles.find((article) => article.storyId === selectedStoryKey)
+    return seed ?? articles[0]
+  }, [selectedStoryBundle, selectedStoryKey, effectiveLevel, readingLevels])
+
+  const currentStoryKey = selectedStoryBundle?.storyId ?? selectedStoryKey
+
+  const cefrAssessment = useMemo(
+    () => assessArticleParagraphs(selectedArticle.paragraphs),
+    [selectedArticle.paragraphs],
+  )
+
+  const progressSignals = useMemo(
+    () => ({
+      savedWordCount: savedWords.length,
+      hasLiveStory: liveBundles.length > 0,
+      coachUsed,
+      shelfCount: shelfItems.length,
+    }),
+    [savedWords.length, liveBundles.length, coachUsed, shelfItems.length],
+  )
 
   const targetLanguageOption = languages.find((language) => language.code === targetLanguage)
-
   const nativeLanguageOption = languages.find((language) => language.code === nativeLanguage)
+
+  const syncFromSignals = useProgressStore((state) => state.syncFromSignals)
+  const recordSession = useProgressStore((state) => state.recordSession)
+  const setStoreCefrLevel = useProgressStore((state) => state.setCurrentLevel)
+  const { markActiveToday, atRisk: streakAtRisk } = useStreak()
+  const { level: xpLevel, showLevelUp, dismissLevelUp } = useXpLevelUp()
+  const addSrsCard = useSRSStore((state) => state.addCard)
+  const [streakModalOpen, setStreakModalOpen] = useState(false)
+  const sessionStats = useProgressStore((state) => state.sessions)
+  const userStreak = useProgressStore((state) => state.progress.streak)
+
+  useEffect(() => {
+    syncFromSignals(progressSignals)
+  }, [progressSignals, syncFromSignals])
+
+  useEffect(() => {
+    markActiveToday()
+  }, [markActiveToday])
+
+  useEffect(() => {
+    setStoreCefrLevel(levelFromAppLevel(level))
+  }, [level, setStoreCefrLevel])
+
+  useEffect(() => {
+    if (streakAtRisk) {
+      setStreakModalOpen(true)
+    }
+  }, [streakAtRisk])
+
+  const loadFreshNewsStory = async () => {
+    if (!isGeminiAiConfigured()) {
+      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      return
+    }
+
+    setNewsLoading(true)
+    setNewsError(null)
+
+    try {
+      const excludeIds = [
+        ...loadSeenHeadlineIds(),
+        ...liveBundles.map((bundle) => bundle.storyId),
+      ]
+      const headlines = await fetchLiveNewsHeadlines({
+        excludeIds,
+        limit: 16,
+        languageCode: targetLanguage,
+      })
+      if (headlines.length === 0) {
+        throw new Error('no_headlines')
+      }
+
+      const headline = headlines[0]
+      const bundle = await buildCefrNewsBundle(headline, {
+        targetLanguageCode: targetLanguage,
+        targetLanguageLabel: targetLanguageOption?.label ?? targetLanguage,
+        nativeLanguageLabel: nativeLanguageOption?.label ?? nativeLanguage,
+      })
+
+      setLiveBundles((current) => [bundle, ...current.filter((item) => item.storyId !== bundle.storyId)])
+      setSelectedStoryKey(bundle.storyId)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'news_failed'
+      setNewsError(
+        message === 'gemini_not_configured'
+          ? 'Configure Gemini to adapt headlines to CEFR levels.'
+          : 'Could not load a new story. Try again in a moment.',
+      )
+    } finally {
+      setNewsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!isGeminiAiConfigured() || liveBundles.length > 0 || newsLoading) {
+      return
+    }
+
+    void loadFreshNewsStory()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount when AI is ready
+  }, [])
 
   const lemonSqueezyCheckoutUrl = useMemo(() => getLemonSqueezyPremiumCheckoutUrl(), [])
 
@@ -138,16 +323,35 @@ function App() {
     [savedWords],
   )
 
-  const [navHash, setNavHash] = useState(
-    () => (typeof window !== 'undefined' ? window.location.hash || '#dashboard' : '#dashboard'),
+  const { activeView, goToView } = useAppNavigation()
+  const viewCopy = VIEW_TITLES[activeView]
+
+  const onShelf = shelfItems.some((item) => item.storyKey === currentStoryKey)
+
+  const openShelfStory = useCallback(
+    (storyKey: string) => {
+      setSelectedStoryKey(storyKey)
+      goToView('read')
+    },
+    [goToView],
   )
 
-  useEffect(() => {
-    const syncHash = () => setNavHash(window.location.hash || '#dashboard')
-    syncHash()
-    window.addEventListener('hashchange', syncHash)
-    return () => window.removeEventListener('hashchange', syncHash)
-  }, [])
+  const toggleShelfStory = () => {
+    if (onShelf) {
+      setShelfItems(removeFromShelf(currentStoryKey))
+      return
+    }
+    setShelfItems(
+      addToShelf({
+        storyKey: currentStoryKey,
+        title: selectedStoryBundle?.sourceTitle ?? selectedArticle.title,
+        category: selectedArticle.category,
+        sourceUrl: selectedStoryBundle?.sourceUrl ?? selectedArticle.sourceUrl,
+        isLive: Boolean(selectedStoryBundle),
+        lastLevel: effectiveLevel,
+      }),
+    )
+  }
 
   useEffect(() => {
     if (!supabase) {
@@ -259,21 +463,66 @@ function App() {
         return current.filter((item) => item.term.toLowerCase() !== termKey)
       }
 
+      recordSession('writing', 75)
+      addSrsCard({
+        id: `sw-${word.term}-${Date.now()}`,
+        skill: 'reading',
+        cefrLevel: levelFromAppLevel(level),
+        front: word.term,
+        back: word.meaning,
+      })
       return [word, ...current]
     })
   }
 
-  const speakArticle = (article: Article) => {
+  const handleLevelChange = (candidate: Level) => {
+    if (!readingLevels.includes(candidate)) {
+      return
+    }
+    setLevel(candidate)
+  }
+
+  useEffect(() => {
+    if (readingLevels.length === 0) {
+      return
+    }
+    if (!readingLevels.includes(level)) {
+      setLevel(readingLevels[0])
+    }
+  }, [selectedStoryKey, readingLevels])
+
+  const speakArticle = async (article: Article) => {
+    const text = [article.title, ...article.paragraphs].join('. ')
+    const language = localeToLanguage(targetLanguageOption?.locale)
+    const cefr = levelFromAppLevel(effectiveLevel)
+    const rate = article.level === 'A1' || article.level === 'A2' ? 0.82 : 0.96
+
+    if (isCloudTtsConfigured()) {
+      try {
+        const result = await tts.listening(text, language, cefr, rate)
+        const audio = new Audio(result.audioUrl)
+        audio.playbackRate = rate
+        audio.onended = () => {
+          URL.revokeObjectURL(result.audioUrl)
+          recordSession('listening')
+        }
+        audio.onerror = () => URL.revokeObjectURL(result.audioUrl)
+        await audio.play()
+        return
+      } catch {
+        // fall through to browser TTS
+      }
+    }
+
     if (!('speechSynthesis' in window)) {
       return
     }
 
     window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(
-      [article.title, ...article.paragraphs].join('. '),
-    )
+    const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = targetLanguageOption?.locale ?? 'en-US'
-    utterance.rate = article.level === 'A1' || article.level === 'A2' ? 0.82 : 0.96
+    utterance.rate = rate
+    utterance.onend = () => recordSession('listening')
     window.speechSynthesis.speak(utterance)
   }
 
@@ -321,6 +570,9 @@ function App() {
     const transcript = [...chatMessages, userTurn]
     setChatMessages(transcript)
     setChatInput('')
+    markCoachUsed()
+    setCoachUsed(true)
+    recordSession('speaking', 72)
 
     if (!isGeminiAiConfigured()) {
       setChatMessages([...transcript, { role: 'coach', text: offlineCoachFallback(trimmed) }])
@@ -329,12 +581,16 @@ function App() {
 
     setChatSending(true)
     try {
+      const scenario = getScenarioById(activeScenarioId)
       const reply = await generateCoachReply(transcript, {
         nativeLanguageLabel: nativeLanguageOption?.label ?? nativeLanguage,
         targetLanguageLabel: targetLanguageOption?.label ?? targetLanguage,
-        level,
+        level: effectiveLevel,
         goal,
-        articleTitle: selectedArticle.title,
+        articleTitle: selectedStoryBundle?.sourceTitle ?? selectedArticle.title,
+        shelfSummary: shelfSummaryForCoach(shelfItems),
+        scenarioSetting: scenario ? `${scenario.title}. ${scenario.setting}` : undefined,
+        scenarioKeyConcepts: scenario?.keyConcepts,
       })
       setChatMessages((current) => [...current, { role: 'coach', text: reply }])
     } catch {
@@ -387,354 +643,121 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Primary">
-        <div className="brand">
-          <div className="brand-mark">
-            <Languages size={24} aria-hidden="true" />
-          </div>
-          <div>
-            <strong>Colingual</strong>
-            <span>Informed Lingua studio</span>
-          </div>
-        </div>
-
-        <nav className="nav-list">
-          {[
-            { hash: '#dashboard', label: 'Home', icon: LayoutDashboard },
-            { hash: '#reading', label: 'Media', icon: PlayCircle },
-            { hash: '#vocabulary', label: 'Words', icon: Brain },
-            { hash: '#chat', label: 'Tutor', icon: MessageSquareText },
-            { hash: '#progress', label: 'Progress', icon: Trophy },
-            { hash: '#learning-path', label: 'Path', icon: MapPinned },
-            { hash: '#community', label: 'Community', icon: Users },
-            { hash: '#pricing', label: 'Plans', icon: Sparkles },
-          ].map((item) => (
-            <a
-              key={item.hash}
-              href={item.hash}
-              className={navHash === item.hash ? 'nav-active' : undefined}
-            >
-              <item.icon size={18} aria-hidden="true" />
-              <span>{item.label}</span>
-            </a>
-          ))}
-        </nav>
-
-        <div className="sync-card">
-          <span className={supabaseConfigured ? 'status-dot online' : 'status-dot'} />
-          <div>
-            <strong>{supabaseConfigured ? 'Connected' : 'Offline mode'}</strong>
-            <span>{supabaseConfigured ? 'Sync ready' : 'Seed content'}</span>
-          </div>
-        </div>
-
-        <div className="sidebar-footer-user">
-          <div className="sidebar-footer-avatar" aria-hidden="true">
-            <UserRound size={20} aria-hidden="true" />
-          </div>
-          <div className="sidebar-footer-meta">
-            <strong>{user ? userDisplayName : 'Guest learner'}</strong>
-            <span>
-              {level} • {targetLanguageOption?.label ?? targetLanguage}
-            </span>
-          </div>
-        </div>
-      </aside>
+      <AppSidebar
+        activeView={activeView}
+        supabaseConfigured={supabaseConfigured}
+        userLabel={user ? userDisplayName : 'Misafir öğrenci'}
+        userMeta={`${level} • ${targetLanguageOption?.label ?? targetLanguage}`}
+      />
 
       <div className="workspace-column">
-        <main className="workspace">
+        <main className={`workspace is-view-${activeView}`}>
         <header className="topbar" id="dashboard">
-          <div>
-            <p className="eyebrow">Daily plan</p>
-            <h1>Today&apos;s learning desk</h1>
-          </div>
+          <TopBar
+            authenticated={Boolean(user)}
+            isPremium={false}
+            profile={{
+              level,
+              targetLanguageLabel: targetLanguageOption?.label ?? targetLanguage,
+              displayName: userDisplayName,
+              email: userEmail || undefined,
+              avatarUrl:
+                (user?.user_metadata?.avatar_url as string | undefined) ??
+                (user?.user_metadata?.picture as string | undefined) ??
+                null,
+            }}
+            premiumCheckoutUrl={lemonSqueezyCheckoutUrl}
+            onGoogleSignIn={() => {
+              void signInWithGoogle()
+            }}
+            googleSignInDisabled={!supabaseConfigured}
+            plansHref="#more"
+            onSignOut={() => {
+              void signOutUser()
+            }}
+            onNotificationClick={() => {
+              document.getElementById('contact-title')?.scrollIntoView({ behavior: 'smooth' })
+            }}
+          />
 
-          <div className="topbar-actions" id="profile">
-            {user ? (
-              <div className="signup-mini account-bar" aria-label="Account">
-                <div className="account-profile" aria-labelledby="account-profile-heading">
-                  <span id="account-profile-heading" className="account-profile-label">
-                    Profil
-                  </span>
-                  <div className="account-profile-body">
-                    <UserRound size={18} aria-hidden="true" />
-                    <div className="account-profile-text">
-                      <strong>{userDisplayName}</strong>
-                      <span>{userEmail}</span>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="provider-button subtle sign-out-button"
-                  onClick={() => {
-                    void signOutUser()
-                  }}
-                >
-                  <LogOut size={16} aria-hidden="true" />
-                  Sign out
-                </button>
-                {lemonSqueezyCheckoutUrl ? (
-                  <a
-                    className="provider-button provider-premium-outline"
-                    href={lemonSqueezyCheckoutUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Premium
-                  </a>
-                ) : null}
-              </div>
-            ) : (
-              <div className="signup-mini signup-auth-bar" aria-label="Hesap ve üyelik">
-                <div className="signup-auth-actions">
-                  <div className="signup-providers">
-                    <button
-                      type="button"
-                      className="provider-button provider-google"
-                      onClick={() => {
-                        void signInWithGoogle()
-                      }}
-                      disabled={!supabaseConfigured}
-                      aria-label="Google ile giriş yap"
-                    >
-                      Google ile giriş
-                    </button>
-                    {lemonSqueezyCheckoutUrl ? (
-                      <a
-                        className="provider-button provider-premium"
-                        href={lemonSqueezyCheckoutUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Premium (Lemon Squeezy)
-                      </a>
-                    ) : null}
-                  </div>
-                  <a className="signup-plans-link" href="#pricing">
-                    Planları gör
-                  </a>
-                </div>
-              </div>
-            )}
-
-            <div className="profile-chip">
-              <UserRound size={18} aria-hidden="true" />
-              <span>{level}</span>
-              <strong>{targetLanguageOption?.label}</strong>
-            </div>
+          <div className="topbar-hero">
+            <p className="eyebrow">{viewCopy.eyebrow}</p>
+            <h1>{viewCopy.title}</h1>
+            {viewCopy.lead ? <p className="topbar-hero-lead">{viewCopy.lead}</p> : null}
           </div>
         </header>
 
-        <section className="setup-strip" aria-label="Learning setup">
-          <label>
-            <span>Native</span>
-            <select
-              value={nativeLanguage}
-              onChange={(event) => setNativeLanguage(event.target.value)}
-            >
-              {languages.map((language) => (
-                <option key={language.code} value={language.code}>
-                  {language.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Target</span>
-            <select
-              value={targetLanguage}
-              onChange={(event) => setTargetLanguage(event.target.value)}
-            >
-              {languages.map((language) => (
-                <option key={language.code} value={language.code}>
-                  {language.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="level-control" aria-label="Level">
-            {levels.map((candidate) => (
-              <button
-                key={candidate}
-                type="button"
-                className={candidate === level ? 'active' : ''}
-                onClick={() => {
-                  setLevel(candidate)
-                  const article = articles.find((item) => item.level === candidate)
-                  if (article) {
-                    setSelectedArticleId(article.id)
-                  }
-                }}
-              >
-                {candidate}
-              </button>
-            ))}
-          </div>
-
-          <label>
-            <span>Goal</span>
-            <select value={goal} onChange={(event) => setGoal(event.target.value)}>
-              {learningGoals.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
-
-        <section className="metric-grid" aria-label="Progress summary">
-          {progressMetrics.map((metric) => (
-            <article className="metric-card" key={metric.label}>
-              <metric.icon size={20} aria-hidden="true" />
-              <div>
-                <span>{metric.label}</span>
-                <strong>{metric.value}</strong>
-                <small>{metric.change}</small>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        <div className="dashboard-quick-links">
-          <a href="#learning-path" className="dq-chip">
-            <MapPinned size={14} aria-hidden="true" />
-            Learning path
-          </a>
-          <a href="#community" className="dq-chip">
-            <Users size={14} aria-hidden="true" />
-            Community
-          </a>
+        <div className="view-pane" data-view-pane="home">
+          <HomeView
+            metrics={progressMetrics}
+            continueTitle={selectedArticle.title}
+            continueMeta={`${selectedArticle.level} • ${selectedArticle.minutes} min`}
+            onContinueRead={() => goToView('read')}
+            onOpenPractice={() => goToView('practice')}
+          />
         </div>
 
-        <section className="learning-path-section" id="learning-path" aria-labelledby="lp-title">
-          <div className="learning-path-intro">
-            <p className="eyebrow">Curriculum</p>
-            <h2 id="lp-title">Your learning path</h2>
-            <p className="learning-path-lead">
-              Build vocabulary and grammar in units — progress here is illustrative until accounts sync to a backend.
-            </p>
-          </div>
-          <div className="learning-path-layout">
-            <div className="lp-column-main">
-              <article className="lp-unit-card">
-                <header className="lp-unit-header">
-                  <div className="lp-unit-header-text">
-                    <span className="lp-unit-label">{activeLearningUnit.unitLabel}</span>
-                    <h3>{activeLearningUnit.title}</h3>
-                    <p>{activeLearningUnit.description}</p>
-                  </div>
-                  <div className="lp-unit-ring" aria-hidden="true">
-                    <span>{activeLearningUnit.progressPct}%</span>
-                  </div>
-                </header>
-                <div className="lp-lesson-list">
-                  {activeLearningUnit.lessons.map((lesson) => (
-                    <div key={lesson.id} className={`lp-lesson lp-lesson--${lesson.state}`}>
-                      <div className="lp-lesson-icon">
-                        {lesson.state === 'done' ? (
-                          <Check size={18} aria-hidden="true" />
-                        ) : null}
-                        {lesson.state === 'current' ? (
-                          <Play size={18} aria-hidden="true" />
-                        ) : null}
-                        {lesson.state === 'locked' ? (
-                          lesson.category === 'Milestone' ? (
-                            <Flag size={18} aria-hidden="true" />
-                          ) : (
-                            <Lock size={18} aria-hidden="true" />
-                          )
-                        ) : null}
-                      </div>
-                      <div className="lp-lesson-body">
-                        <span className="lp-lesson-cat">{lesson.category}</span>
-                        <h4>{lesson.title}</h4>
-                        {lesson.description ? <p>{lesson.description}</p> : null}
-                      </div>
-                      {lesson.state === 'current' ? (
-                        <button type="button" className="lp-start-btn">
-                          Start Lesson
-                        </button>
-                      ) : null}
-                      {lesson.state === 'done' ? <span className="lp-lesson-meta">Review</span> : null}
-                    </div>
-                  ))}
-                </div>
-              </article>
 
-              <article className="lp-unit-card lp-unit-locked-card" aria-labelledby="lp-u2-title">
-                <header className="lp-unit-locked-head">
-                  <div>
-                    <span className="lp-unit-label muted">{lockedLearningUnit.unitLabel}</span>
-                    <h3 id="lp-u2-title">{lockedLearningUnit.title}</h3>
-                  </div>
-                  <Lock size={26} className="lp-lock-icon" aria-hidden="true" />
-                </header>
-              </article>
-            </div>
+        <div className="view-pane" data-view-pane="read">
+        <LearnerSetupStrip
+          nativeLanguage={nativeLanguage}
+          targetLanguage={targetLanguage}
+          level={effectiveLevel}
+          goal={goal}
+          onNativeChange={setNativeLanguage}
+          onTargetChange={setTargetLanguage}
+          availableLevels={readingLevels}
+          onLevelChange={handleLevelChange}
+          onGoalChange={setGoal}
+        />
 
-            <aside className="lp-column-aside" aria-label="Path sidebar">
-              <div className="lp-widget lp-streak">
-                <Flame size={28} className="lp-flame" aria-hidden="true" />
-                <div>
-                  <strong className="lp-streak-num">14 Days</strong>
-                  <span className="lp-streak-label">Current streak</span>
-                </div>
-                <div className="lp-xp-bar-wrap">
-                  <div className="lp-xp-row">
-                    <span>Daily goal</span>
-                    <span className="lp-xp-val">30 / 50 XP</span>
-                  </div>
-                  <div className="lp-xp-track">
-                    <span style={{ width: '60%' }} />
-                  </div>
-                  <p className="lp-xp-hint">Complete one more lesson to hit your goal.</p>
-                </div>
-              </div>
-              <div className="lp-widget lp-ai-card">
-                <Sparkles size={24} aria-hidden="true" />
-                <h4>AI conversation practice</h4>
-                <p>Apply Unit 1 in a guided dialogue with the tutor.</p>
-                <a href="#chat" className="lp-ai-cta">
-                  Start simulation
-                </a>
-              </div>
-            </aside>
-          </div>
-        </section>
 
         <div className="content-grid">
           <section className="panel article-list" aria-labelledby="article-list-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Reading queue</p>
-                <h2 id="article-list-title">Level {level} news</h2>
+                <p className="eyebrow">Orijinal metin</p>
+                <h2 id="article-list-title">Hikâye seç</h2>
               </div>
-              <button className="icon-button" type="button" aria-label="Search articles">
-                <Search size={18} />
-              </button>
+              <div className="article-list-actions">
+                <button
+                  className="icon-button news-refresh-btn"
+                  type="button"
+                  aria-label="Fetch a new live news story"
+                  disabled={newsLoading}
+                  onClick={() => void loadFreshNewsStory()}
+                >
+                  {newsLoading ? <Loader2 size={18} className="spin" /> : <RefreshCw size={18} />}
+                </button>
+                <button className="icon-button" type="button" aria-label="Search articles">
+                  <Search size={18} />
+                </button>
+              </div>
             </div>
 
+            {newsError ? <p className="news-status news-status--error">{newsError}</p> : null}
+            {newsLoading && liveBundles.length === 0 ? (
+              <p className="news-status">Fetching today&apos;s story and building CEFR versions…</p>
+            ) : null}
+
             <div className="article-stack">
-              {articles.map((article) => (
+              {storyQueue.map((item) => (
                 <button
                   type="button"
-                  key={article.id}
-                  className={article.id === selectedArticle.id ? 'article-row active' : 'article-row'}
-                  onClick={() => setSelectedArticleId(article.id)}
+                  key={item.key}
+                  className={item.key === selectedStoryKey ? 'article-row active' : 'article-row'}
+                  onClick={() => setSelectedStoryKey(item.key)}
                 >
-                  <span className={`article-thumb ${article.imageTone}`}>
+                  <span className={`article-thumb ${item.imageTone}`}>
                     <BookOpen size={22} aria-hidden="true" />
                   </span>
                   <span>
                     <small>
-                      {article.level} / {article.category}
+                      {item.category}
+                      {item.isLive ? ' • Canlı' : ''}
                     </small>
-                    <strong>{article.title}</strong>
-                    <em>{article.minutes} min read</em>
+                    <strong>{item.title}</strong>
+                    <em>{item.minutes} min</em>
                   </span>
                   <ChevronRight size={17} aria-hidden="true" />
                 </button>
@@ -744,18 +767,17 @@ function App() {
 
           <section className="panel reading-panel" id="reading" aria-labelledby="reading-title">
             <div className="reading-visual">
-              <div className={`visual-band ${selectedArticle.imageTone}`}>
-                <div className="visual-lines">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <CirclePlay size={42} aria-hidden="true" />
-              </div>
-              <div className="media-actions">
+              <div className="media-actions media-actions--listening">
+                <AudioPlayer
+                  title={selectedArticle.title}
+                  transcript={selectedArticle.paragraphs.join(' ')}
+                  locale={targetLanguageOption?.locale}
+                  cefrLevel={levelFromAppLevel(effectiveLevel)}
+                  onListenComplete={() => recordSession('listening')}
+                />
                 <button type="button" onClick={() => speakArticle(selectedArticle)}>
                   <Headphones size={17} aria-hidden="true" />
-                  Listen
+                  Hızlı dinle
                 </button>
                 <button type="button">
                   <Video size={17} aria-hidden="true" />
@@ -765,19 +787,76 @@ function App() {
             </div>
 
             <article>
-              <div className="article-meta">
-                <span>{selectedArticle.level}</span>
-                <span>{selectedArticle.category}</span>
-                <span>
-                  <Clock3 size={14} aria-hidden="true" />
-                  {selectedArticle.minutes} min
-                </span>
+              <div className="reading-toolbar">
+                <CefrAssessmentBadge
+                  selectedLevel={effectiveLevel}
+                  assessment={cefrAssessment}
+                />
+                <button
+                  type="button"
+                  className={onShelf ? 'shelf-toggle shelf-toggle--on' : 'shelf-toggle'}
+                  onClick={toggleShelfStory}
+                >
+                  <BookMarked size={16} aria-hidden="true" />
+                  {onShelf ? 'Rafta' : 'Rafa ekle'}
+                </button>
               </div>
-              <h2 id="reading-title">{selectedArticle.title}</h2>
-              <p className="deck">{selectedArticle.deck}</p>
-              <div className="story-copy">
-                {selectedArticle.paragraphs.map((paragraph) => renderClickableParagraph(paragraph))}
-              </div>
+              {selectedStoryBundle ? (
+                <>
+                  <div className="article-meta">
+                    <span>{selectedArticle.category}</span>
+                    {selectedStoryBundle.isLive ? (
+                      <>
+                        <span>Live</span>
+                        <span>A1 – C1</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Community</span>
+                        <span>
+                          <Clock3 size={14} aria-hidden="true" />
+                          {selectedArticle.minutes} min
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <h2 id="reading-title">{selectedStoryBundle.sourceTitle}</h2>
+                  <p className="deck">{selectedArticle.deck}</p>
+                  {selectedStoryBundle.sourceUrl ? (
+                    <p className="news-source">
+                      <a href={selectedStoryBundle.sourceUrl} target="_blank" rel="noreferrer">
+                        Original article
+                      </a>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <div className="article-meta">
+                    <span>{effectiveLevel}</span>
+                    <span>{selectedArticle.category}</span>
+                    <span>
+                      <Clock3 size={14} aria-hidden="true" />
+                      {selectedArticle.minutes} min
+                    </span>
+                  </div>
+                  <h2 id="reading-title">{selectedArticle.title}</h2>
+                  <p className="deck">{selectedArticle.deck}</p>
+                </>
+              )}
+              {selectedStoryBundle ? (
+                <CefrLevelsPanel
+                  bundle={selectedStoryBundle}
+                  activeLevel={effectiveLevel}
+                  renderParagraph={renderClickableParagraph}
+                />
+              ) : (
+                <div className="story-copy">
+                  {selectedArticle.paragraphs.map((paragraph) =>
+                    renderClickableParagraph(paragraph),
+                  )}
+                </div>
+              )}
             </article>
 
             <aside className="lex-panel" aria-label="Dictionary">
@@ -883,6 +962,26 @@ function App() {
               ))}
             </div>
           </section>
+        </div>
+
+        </div>
+
+        <div className="view-pane content-grid--practice" data-view-pane="practice">
+          <SkillsWorkbench
+            article={selectedArticle}
+            appLevel={effectiveLevel}
+            locale={targetLanguageOption?.locale}
+            storyKey={currentStoryKey}
+            onWordClick={setSelectedLexeme}
+          />
+
+          <ReviewSessionView />
+
+          <VocabularyBank
+            words={savedWords}
+            defaultLevel={effectiveLevel}
+            language={targetLanguage}
+          />
 
           <section className="panel vocab-panel" id="vocabulary" aria-labelledby="vocab-title">
             <div className="panel-heading">
@@ -910,13 +1009,24 @@ function App() {
           <section className="panel chat-panel" id="chat" aria-labelledby="chat-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Practice room</p>
+                <p className="eyebrow">ScholarShelf · SchoBot</p>
                 <h2 id="chat-title">Chat coach</h2>
               </div>
               <span className="count-pill">
                 {isGeminiAiConfigured() ? `${resolveGeminiModel()} · AI` : 'Demo replies'}
               </span>
             </div>
+
+            <ScenarioLessonPicker
+              activeId={activeScenarioId}
+              onSelect={setActiveScenarioId}
+            />
+
+            <CoachShelfPrompts
+              items={shelfItems}
+              disabled={chatSending}
+              onPick={(prompt) => setChatInput(prompt)}
+            />
 
             <div className="messages" aria-live="polite">
               {chatMessages.map((message, index) => (
@@ -949,6 +1059,42 @@ function App() {
             </form>
           </section>
 
+          <StudyMaterialPanel
+            topic={selectedStoryBundle?.sourceTitle ?? selectedArticle.title}
+            level={effectiveLevel}
+            targetLanguageLabel={targetLanguageOption?.label ?? targetLanguage}
+            nativeLanguageLabel={nativeLanguageOption?.label ?? nativeLanguage}
+            vocabularyTerms={selectedArticle.vocabulary.map((word) => word.term)}
+          />
+
+          <ReadingComprehensionPanel
+            passage={selectedArticle.paragraphs.join('\n')}
+            cefrLevel={levelFromAppLevel(effectiveLevel)}
+          />
+        </div>
+
+        <div className="view-pane" data-view-pane="progress">
+          <CEFRDashboardSection
+            onNavigateLevel={(candidate) => {
+              if (levels.includes(candidate as Level)) {
+                setLevel(candidate as Level)
+              }
+            }}
+          />
+          <DailyMissions />
+          <WeeklyChallenge />
+          <XPBreakdown
+            exercises={sessionStats.length}
+            correct={sessionStats.filter((item) => item.score >= 70).length}
+            streak={userStreak}
+          />
+          <RetentionGraph />
+          <LearningPathSection signals={progressSignals} />
+          <AiCourseOutlinePanel
+            defaultCourseName="Günlük haber okuma"
+            level={effectiveLevel}
+            targetLanguageLabel={targetLanguageOption?.label ?? targetLanguage}
+          />
           <section className="panel progress-panel" id="progress" aria-labelledby="progress-title">
             <div className="panel-heading">
               <div>
@@ -975,6 +1121,16 @@ function App() {
             </div>
           </section>
         </div>
+
+        <div className="view-pane" data-view-pane="more">
+        <ScholarShelfPanel
+          items={shelfItems}
+          activeStoryKey={currentStoryKey}
+          onOpen={openShelfStory}
+          onRemove={(storyKey) => setShelfItems(removeFromShelf(storyKey))}
+        />
+
+        <LearningEcosystemPanel />
 
         <section id="community" className="community-hub" aria-labelledby="community-title">
           <div className="community-hub-intro">
@@ -1290,7 +1446,7 @@ function App() {
                   </ul>
 
                   {plan.variant === 'free' ? (
-                    <a className="price-card-cta price-card-cta-secondary" href="#dashboard">
+                    <a className="price-card-cta price-card-cta-secondary" href="#home">
                       Ücretsiz başla
                     </a>
                   ) : null}
@@ -1315,26 +1471,13 @@ function App() {
             </div>
           </section>
         </div>
+        </div>
       </main>
 
-      <nav className="mobile-bottom-nav" aria-label="Mobile">
-        {[
-          { hash: '#dashboard', label: 'Home', Icon: LayoutDashboard },
-          { hash: '#reading', label: 'Media', Icon: PlayCircle },
-          { hash: '#vocabulary', label: 'Words', Icon: Brain },
-          { hash: '#chat', label: 'Tutor', Icon: MessageSquareText },
-          { hash: '#profile', label: 'Profile', Icon: UserRound },
-        ].map((item) => (
-          <a
-            key={item.hash}
-            href={item.hash}
-            className={navHash === item.hash ? 'nav-active' : undefined}
-          >
-            <item.Icon size={22} strokeWidth={2} aria-hidden="true" />
-            {item.label}
-          </a>
-        ))}
-      </nav>
+      <MobileTabBar activeView={activeView} />
+
+      <LevelUpModal open={showLevelUp} level={xpLevel} onClose={dismissLevelUp} />
+      <StreakProtectModal open={streakModalOpen} onClose={() => setStreakModalOpen(false)} />
       </div>
     </div>
   )

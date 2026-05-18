@@ -1,0 +1,38 @@
+.streak-protect-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  background: rgba(21, 32, 43, 0.4);
+}
+
+.streak-protect-modal__card {
+  width: min(400px, 92vw);
+  padding: 1rem;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.streak-protect-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.streak-protect-modal__actions button {
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.streak-protect-modal__actions button:first-child {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #fff;
+}
