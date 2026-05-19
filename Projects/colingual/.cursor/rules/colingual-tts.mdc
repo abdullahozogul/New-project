@@ -46,7 +46,7 @@ const SPEED_BY_CEFR: Record<CEFRLevel, number> = {
 ```
 VITE_ELEVENLABS_API_KEY=
 VITE_OPENAI_API_KEY=
-# veya mevcut VITE_GEMINI_API_KEY / backend proxy — prod'da client'a gömme
+# Gemini için AI_ASSISTANT_API_KEY (dev proxy) veya backend proxy — prod'da client'a gömme
 ```
 
 ## Entegrasyon noktaları
