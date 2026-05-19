@@ -139,7 +139,7 @@ function geminiDevProxyPlugin(env: Record<string, string>): Plugin {
           return
         }
 
-        const apiKey = env.AI_ASSISTANT_API_KEY?.trim() || env.VITE_GEMINI_API_KEY?.trim()
+        const apiKey = env.AI_ASSISTANT_API_KEY?.trim()
         if (!apiKey) {
           res.statusCode = 503
           res.end(JSON.stringify({ error: 'missing_gemini_key' }))

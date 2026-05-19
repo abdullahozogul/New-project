@@ -38,7 +38,7 @@ Tam README: proje kökünde `README.md`.
 
 ## Env (`.env.local`)
 
-- `VITE_GEMINI_API_KEY` veya `VITE_AI_ASSISTANT_ENDPOINT` — koç + canlı CEFR
+- `AI_ASSISTANT_API_KEY` (dev proxy) veya `VITE_AI_ASSISTANT_ENDPOINT` — koç + canlı CEFR
 - `NEWS_SOURCE_API_KEY` / `VITE_NEWS_SOURCE_ENDPOINT` — alternatif haber
 - `VITE_SUPABASE_*` — auth (opsiyonel)
 - Planlı TTS: `VITE_ELEVENLABS_API_KEY`, `VITE_OPENAI_API_KEY` — bkz. `colingual-tts.mdc`
