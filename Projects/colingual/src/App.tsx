@@ -41,6 +41,7 @@ import {
   type Level,
   type VocabularyItem,
 } from './data'
+import { getRedirectUrl } from './lib/auth'
 import { supabase, supabaseConfigured } from './lib/supabase'
 import { ScholarShelfPanel } from './components/library/ScholarShelfPanel'
 import { CefrAssessmentBadge } from './components/reading/CefrAssessmentBadge'
@@ -609,11 +610,10 @@ function App() {
       return
     }
 
-    const redirectTo = window.location.origin
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo,
+        redirectTo: getRedirectUrl(),
       },
     })
 
