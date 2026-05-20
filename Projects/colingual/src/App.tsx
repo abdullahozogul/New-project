@@ -236,7 +236,7 @@ function App() {
 
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
-      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      setNewsError('Configure the Gemini dev proxy or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
       return
     }
 
