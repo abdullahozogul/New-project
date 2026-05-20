@@ -22,6 +22,7 @@ export type TopBarProps = {
   authenticated: boolean
   premiumCheckoutUrl?: string | null
   onGoogleSignIn?: () => void
+  onOpenLogin?: () => void
   googleSignInDisabled?: boolean
   plansHref?: string
   onNotificationClick?: () => void
@@ -39,6 +40,7 @@ export function TopBar({
   authenticated,
   premiumCheckoutUrl,
   onGoogleSignIn,
+  onOpenLogin,
   googleSignInDisabled,
   plansHref = '#pricing',
   onNotificationClick,
@@ -96,13 +98,16 @@ export function TopBar({
         <div className="topbar-saas__right">
           {!authenticated ? (
             <div className="topbar-saas__guest-actions">
+              <button type="button" className="topbar-btn topbar-btn--login" onClick={() => onOpenLogin?.()}>
+                Giriş yap
+              </button>
               <button
                 type="button"
                 className="topbar-btn topbar-btn--ghost"
                 onClick={() => onGoogleSignIn?.()}
                 disabled={googleSignInDisabled}
               >
-                Google ile Giriş
+                Google
               </button>
               {premiumCheckoutUrl ? (
                 <a

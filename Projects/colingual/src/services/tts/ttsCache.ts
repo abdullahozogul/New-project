@@ -2,8 +2,17 @@ const DB_NAME = 'colingual-tts-cache'
 const STORE_NAME = 'audio'
 const TTL_MS = 7 * 24 * 60 * 60 * 1000
 
+function hashText(text: string): string {
+  let hash = 0
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash << 5) - hash + text.charCodeAt(index)
+    hash |= 0
+  }
+  return Math.abs(hash).toString(36)
+}
+
 function cacheKey(text: string, lang: string, voice: string, useCase: string): string {
-  return `${useCase}::${lang}::${voice}::${text.trim().toLowerCase()}`
+  return `${useCase}::${lang}::${voice}::${hashText(text.trim())}`
 }
 
 function openDB(): Promise<IDBDatabase> {

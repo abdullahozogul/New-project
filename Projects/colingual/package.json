@@ -11,7 +11,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.1",
+    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/work-sans": "^5.2.8",
     "@supabase/supabase-js": "2.105.3",
     "framer-motion": "^12.39.0",
     "lucide-react": "1.14.0",

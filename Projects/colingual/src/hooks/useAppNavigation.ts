@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { isSupabaseAuthCallback } from '../lib/authCallback'
 import { DEEP_LINK_HASHES, hashForView, resolveAppView, type AppView } from '../config/navigation'
 
 export function useAppNavigation() {
@@ -9,7 +10,12 @@ export function useAppNavigation() {
   const activeView = resolveAppView(navHash)
 
   useEffect(() => {
-    const syncHash = () => setNavHash(window.location.hash || '#home')
+    const syncHash = () => {
+      if (isSupabaseAuthCallback()) {
+        return
+      }
+      setNavHash(window.location.hash || '#home')
+    }
     syncHash()
     window.addEventListener('hashchange', syncHash)
     return () => window.removeEventListener('hashchange', syncHash)
@@ -17,6 +23,9 @@ export function useAppNavigation() {
 
   useEffect(() => {
     if (typeof window === 'undefined') {
+      return
+    }
+    if (isSupabaseAuthCallback()) {
       return
     }
     const hash = window.location.hash || '#home'

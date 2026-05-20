@@ -196,6 +196,17 @@
   cursor: not-allowed;
 }
 
+.topbar-btn--login {
+  border: 1px solid transparent;
+  background: linear-gradient(90deg, #8f94fb, rgba(143, 148, 251, 0.75));
+  color: #fff;
+  font-weight: 800;
+}
+
+.topbar-btn--login:hover {
+  filter: brightness(1.05);
+}
+
 .topbar-btn--ghost {
   border: 1px solid var(--line);
   background: transparent;

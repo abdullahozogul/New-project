@@ -1,9 +1,12 @@
+import { markOAuthPending, clearOAuthPending } from './authCallback'
+import { MOBILE_AUTH_CALLBACK_URL } from './authConstants'
+import { openExternalLink } from './openExternalLink'
 import { isNative } from './platform'
 import { supabase } from './supabase'
 
 export type AuthActionResult = { ok: true } | { ok: false; message: string }
 
-const MOBILE_AUTH_CALLBACK_URL = 'com.colingual.app://auth/callback'
+export { MOBILE_AUTH_CALLBACK_URL }
 
 /** Supabase redirect target: web origin or native deep link. */
 export function getRedirectUrl(): string {
@@ -67,5 +70,33 @@ export async function sendPasswordReset(email: string): Promise<AuthActionResult
   if (error) {
     return { ok: false, message: formatAuthError(error) }
   }
+  return { ok: true }
+}
+
+export async function signInWithGoogleOAuth(): Promise<AuthActionResult> {
+  if (!supabase) {
+    return { ok: false, message: 'Supabase yapılandırılmadı.' }
+  }
+
+  markOAuthPending()
+
+  const native = isNative()
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: getRedirectUrl(),
+      skipBrowserRedirect: native,
+    },
+  })
+
+  if (error) {
+    clearOAuthPending()
+    return { ok: false, message: formatAuthError(error) }
+  }
+
+  if (native && data?.url) {
+    await openExternalLink(data.url)
+  }
+
   return { ok: true }
 }

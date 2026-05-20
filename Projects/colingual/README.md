@@ -16,6 +16,7 @@ Colingual is a React and Vite web app for level-based language learning. The cur
 | [AI Study Material Generator](https://github.com/Adiaparmar/AI-Study-Material-Generator) | Gemini study sheets (`#study-material`, `src/lib/aiEducation.ts`) |
 | [Automated Course Content Generator](https://github.com/pramodkoujalagi/Automated-Course-Content-Generator) | AI course outline + quiz in **İlerleme** (`#course-ai`) |
 | [language-learning-apps](https://github.com/bj36272/language-learning-apps) · [ai-education](https://github.com/topics/ai-education) | Ecosystem positioning panel (`#ecosystem`) |
+| [Flutter Login Page UI](https://github.com/afgprogrammer/Flutter-Login-Page-UI) | Full-screen auth (`src/components/auth/LoginPage.tsx`) — purple hero, fade-in form, Supabase |
 
 ## Setup
 

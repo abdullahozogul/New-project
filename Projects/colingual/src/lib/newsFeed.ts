@@ -1,10 +1,17 @@
+import { apiFetch } from './apiClient'
+import { headlineFieldsFromRssTitle } from './newsSource'
+
 export type RawNewsHeadline = {
   id: string
   title: string
   summary: string
   category: string
+  /** Publisher or outlet name (e.g. BBC News). */
+  sourceName?: string
   sourceUrl?: string
   publishedAt?: string
+  /** Scraped publisher article text (fed to Gemini for faithful CEFR adaptation). */
+  articleBody?: string
 }
 
 const SEEN_HEADLINES_KEY = 'colingual.seenHeadlineIds'
@@ -91,13 +98,18 @@ function mapRssItems(items: Rss2JsonItem[]): RawNewsHeadline[] {
   return items
     .filter((item) => item.title?.trim())
     .map((item) => {
-      const title = item.title!.trim()
-      const summary = (item.description ?? title).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+      const rawTitle = item.title!.trim()
+      const { title, sourceName } = headlineFieldsFromRssTitle(rawTitle)
+      const summary = (item.description ?? rawTitle)
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
       return {
-        id: hashHeadlineId(title, item.link),
+        id: hashHeadlineId(rawTitle, item.link),
         title,
         summary: summary.slice(0, 600),
         category: pickCategoryFromTitle(title),
+        sourceName,
         sourceUrl: item.link,
         publishedAt: item.pubDate,
       }
@@ -114,25 +126,35 @@ export async function fetchLiveNewsHeadlines(options?: {
   const limit = options?.limit ?? 12
   const configuredEndpoint = import.meta.env.VITE_NEWS_SOURCE_ENDPOINT?.trim()
 
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20_000)
+
   let response: Response
 
-  if (configuredEndpoint) {
-    const url = new URL(configuredEndpoint, window.location.origin)
-    url.searchParams.set('limit', String(limit))
-    if (exclude.size > 0) {
-      url.searchParams.set('exclude', [...exclude].join(','))
+  try {
+    if (configuredEndpoint) {
+      const url = new URL(configuredEndpoint, window.location.origin)
+      url.searchParams.set('limit', String(limit))
+      if (exclude.size > 0) {
+        url.searchParams.set('exclude', [...exclude].join(','))
+      }
+      response = await fetch(url.toString(), { signal: controller.signal })
+    } else {
+      const params = new URLSearchParams()
+      if (exclude.size > 0) {
+        params.set('exclude', [...exclude].join(','))
+      }
+      params.set('limit', String(limit))
+      if (options?.languageCode) {
+        params.set('lang', options.languageCode)
+      }
+      response = await apiFetch(`/news/headlines?${params.toString()}`, {
+        signal: controller.signal,
+        timeoutMs: 20_000,
+      })
     }
-    response = await fetch(url.toString())
-  } else {
-    const params = new URLSearchParams()
-    if (exclude.size > 0) {
-      params.set('exclude', [...exclude].join(','))
-    }
-    params.set('limit', String(limit))
-    if (options?.languageCode) {
-      params.set('lang', options.languageCode)
-    }
-    response = await fetch(`/api/news/headlines?${params.toString()}`)
+  } finally {
+    clearTimeout(timer)
   }
 
   if (!response.ok) {
@@ -153,4 +175,65 @@ export async function fetchLiveNewsHeadlines(options?: {
 
 export function parseRss2JsonPayload(payload: Rss2JsonResponse): RawNewsHeadline[] {
   return mapRssItems(payload.items ?? [])
+}
+
+const ARTICLE_SCRAPE_TIMEOUT_MS = 5_000
+
+/** Optional scrape; never blocks load if publisher URL fails. */
+export async function enrichHeadlineWithArticleBody(
+  headline: RawNewsHeadline,
+): Promise<RawNewsHeadline> {
+  if (headline.articleBody && headline.articleBody.trim().length > 120) {
+    return headline
+  }
+
+  if (!headline.sourceUrl) {
+    return headline
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ARTICLE_SCRAPE_TIMEOUT_MS)
+
+  try {
+    const params = new URLSearchParams({ url: headline.sourceUrl })
+    const response = await apiFetch(`/news/article-body?${params.toString()}`, {
+      signal: controller.signal,
+      timeoutMs: ARTICLE_SCRAPE_TIMEOUT_MS,
+    })
+    if (!response.ok) {
+      return headline
+    }
+
+    const payload = (await response.json()) as { articleBody?: string | null }
+    const articleBody = payload.articleBody?.trim()
+    if (!articleBody || articleBody.length < 120) {
+      return headline
+    }
+
+    return {
+      ...headline,
+      articleBody,
+      summary: articleBody.slice(0, 600),
+    }
+  } catch {
+    return headline
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** First headline + quick scrape attempt (RSS summary is always used as fallback). */
+export async function prepareHeadlineForCefr(
+  headlines: RawNewsHeadline[],
+): Promise<RawNewsHeadline | null> {
+  const primary = headlines[0]
+  if (!primary) {
+    return null
+  }
+
+  if (primary.articleBody && primary.articleBody.length > 120) {
+    return primary
+  }
+
+  return enrichHeadlineWithArticleBody(primary)
 }

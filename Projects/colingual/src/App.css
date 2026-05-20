@@ -498,6 +498,21 @@ h3,
   white-space: nowrap;
 }
 
+.auth-boot {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  background: var(--canvas);
+}
+
+.auth-boot__spin {
+  animation: audio-player-spin 0.8s linear infinite;
+  color: #8f94fb;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--primary);

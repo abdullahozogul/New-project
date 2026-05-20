@@ -11,12 +11,16 @@ import {
 export type NewsStoryBundle = {
   storyId: string
   sourceTitle: string
+  /** Publisher or outlet (RSS / GNews). */
+  sourceName?: string
   sourceUrl?: string
   category: string
   fetchedAt: number
   imageTone: Article['imageTone']
   /** True for RSS/Gemini headlines; false for bundled demo stories. */
   isLive?: boolean
+  /** Learner target language (ISO code) for live CEFR variants. */
+  targetLanguageCode?: string
   variants: Partial<Record<Level, ArticleVariantContent>>
 }
 
@@ -118,6 +122,7 @@ export function articleFromBundle(bundle: NewsStoryBundle, level: Level): Articl
     vocabulary: variant.vocabulary,
     sourceUrl: bundle.sourceUrl,
     sourceTitle: bundle.sourceTitle,
+    sourceName: bundle.sourceName,
     readingPurpose: variant.readingPurpose,
     grammarUsed: variant.grammarUsed,
   }
@@ -153,6 +158,7 @@ export type StoryQueueItem = {
   key: string
   title: string
   category: string
+  sourceName?: string
   minutes: number
   imageTone: Article['imageTone']
   isLive?: boolean
@@ -185,6 +191,7 @@ export function buildStoryQueue(
       key: bundle.storyId,
       title: bundle.sourceTitle,
       category: bundle.category,
+      sourceName: bundle.sourceName,
       minutes: preview?.minutes ?? 5,
       imageTone: bundle.imageTone,
       isLive: true,
@@ -226,12 +233,13 @@ function buildGenericCefrSystemInstruction(
 ): string {
   return [
     'You are Colingual, an expert language educator and news editor.',
-    `Adapt a real news headline into graded reading texts in ${targetLanguageLabel}.`,
+    `Translate and adapt a REAL published news article into graded reading texts written entirely in ${targetLanguageLabel} (titles, body, examples).`,
     'Produce one version per CEFR level: A1, A2, B1, B2, C1.',
-    'All versions must describe the SAME factual story; simplify grammar and vocabulary at lower levels.',
+    'All versions must describe the SAME factual story as the source article; simplify grammar and vocabulary at lower levels.',
     'Follow CEFR reading progression: A1 recognition, A2 locating facts, B1 interpretation, B2 evaluation, C1 inference.',
     `Vocabulary glosses in ${nativeLanguageLabel}.`,
-    'Do not invent sensational claims beyond the source summary.',
+    'Use ONLY facts, names, dates, and claims present in the source article. Do not invent events or quotes.',
+    'When sourceArticle is provided, treat it as the authoritative original — paraphrase and simplify, do not replace with a different story.',
   ].join(' ')
 }
 
@@ -249,7 +257,10 @@ function buildCefrUserPrompt(headline: RawNewsHeadline, useTtflSchema: boolean):
   return JSON.stringify({
     headline: headline.title,
     summary: headline.summary,
+    sourceArticle: headline.articleBody?.slice(0, 5500) ?? headline.summary,
     category: headline.category,
+    source: headline.sourceName,
+    sourceUrl: headline.sourceUrl,
     levels,
     outputShape: {
       category: 'string',
@@ -262,6 +273,47 @@ function buildCefrUserPrompt(headline: RawNewsHeadline, useTtflSchema: boolean):
       },
     },
   })
+}
+
+/** When Gemini fails, still show scraped publisher text at all CEFR levels. */
+export function buildMinimalNewsBundle(
+  headline: RawNewsHeadline,
+  options: CefrNewsBuildOptions,
+): NewsStoryBundle {
+  const body = (headline.articleBody ?? headline.summary).trim()
+  const paragraphs = body
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const content = paragraphs.length > 0 ? paragraphs : [body || headline.title]
+
+  const variants: NewsStoryBundle['variants'] = {}
+  for (const lvl of levels) {
+    variants[lvl] = {
+      title: headline.title,
+      deck:
+        headline.summary.slice(0, 280) ||
+        `Kaynak: ${headline.sourceName ?? 'canlı haber'} — orijinal metin.`,
+      minutes: estimateMinutes(content),
+      listening: defaultListening(lvl),
+      video: defaultVideo(headline.category),
+      paragraphs: content,
+      vocabulary: [],
+    }
+  }
+
+  return {
+    storyId: headline.id,
+    sourceTitle: headline.title,
+    sourceName: headline.sourceName,
+    sourceUrl: headline.sourceUrl,
+    category: headline.category,
+    fetchedAt: Date.now(),
+    imageTone: imageToneForStory(headline.id),
+    isLive: true,
+    targetLanguageCode: options.targetLanguageCode,
+    variants,
+  }
 }
 
 export async function buildCefrNewsBundle(
@@ -279,6 +331,7 @@ export async function buildCefrNewsBundle(
       buildTtflTurkishCefrSystemInstruction({
         topic: headline.title,
         topicSummary: headline.summary,
+        sourceArticle: headline.articleBody,
         nativeLanguageLabel: options.nativeLanguageLabel,
       })
     : buildGenericCefrSystemInstruction(
@@ -330,11 +383,13 @@ export async function buildCefrNewsBundle(
   return {
     storyId,
     sourceTitle: headline.title,
+    sourceName: headline.sourceName,
     sourceUrl: headline.sourceUrl,
     category,
     fetchedAt: Date.now(),
     imageTone: imageToneForStory(storyId),
     isLive: true,
+    targetLanguageCode: options.targetLanguageCode,
     variants,
   }
 }

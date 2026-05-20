@@ -16,6 +16,8 @@ export function localeToLanguage(locale?: string): string {
   return base || 'en'
 }
 
+export { resolveTtsProfile, isPredominantlyEnglish } from '../services/tts/ttsLanguage'
+
 export function truncateForTts(text: string, useCase: TTSUseCase): string {
   const trimmed = text.trim()
   const max = MAX_TEXT_BY_USE_CASE[useCase]

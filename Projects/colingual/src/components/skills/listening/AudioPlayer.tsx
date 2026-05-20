@@ -3,7 +3,7 @@ import { Headphones, Loader2, Pause, Play } from 'lucide-react'
 import type { CEFRLevel } from '../../../types'
 import { useTTS } from '../../../hooks/useTTS'
 import { isCloudTtsConfigured } from '../../../services/tts/ttsService'
-import { localeToLanguage } from '../../../utils/ttsUtils'
+import { localeToLanguage, resolveTtsProfile } from '../../../utils/ttsUtils'
 import './AudioPlayer.css'
 
 const RATES = [0.75, 1, 1.25, 1.5] as const
@@ -27,49 +27,31 @@ export function AudioPlayer({
     cefrLevel === 'A1' || cefrLevel === 'A2' ? 0.75 : 1,
   )
   const [showTranscript, setShowTranscript] = useState(false)
-  const { isLoading, isPlaying, error, speak, stop } = useTTS()
-  const language = localeToLanguage(locale)
+  const { isLoading, isPlaying, error, lastProvider, speakListening, stop } = useTTS()
   const fullText = [title, transcript].filter(Boolean).join('. ')
-
-  const playWithSpeechSynthesis = useCallback(() => {
-    if (!('speechSynthesis' in window)) {
-      return
-    }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(fullText)
-    utterance.lang = locale
-    utterance.rate = rate
-    utterance.onend = () => onListenComplete?.()
-    window.speechSynthesis.speak(utterance)
-  }, [fullText, locale, onListenComplete, rate])
+  const ttsProfile = resolveTtsProfile(localeToLanguage(locale), fullText)
+  const language = ttsProfile.language
 
   const play = useCallback(() => {
-    const request = {
-      text: fullText,
-      language,
-      useCase: 'listening_content' as const,
-      cefrLevel,
-      speed: rate,
-    }
-
-    if (isCloudTtsConfigured()) {
-      void speak(request, {
+    void speakListening(
+      {
+        text: fullText,
+        language,
+        useCase: 'listening_content',
+        cefrLevel,
+        speed: rate,
+      },
+      {
         playbackRate: rate,
         onEnded: onListenComplete,
-        onFallback: playWithSpeechSynthesis,
-      })
-      return
-    }
-
-    playWithSpeechSynthesis()
-  }, [cefrLevel, fullText, language, onListenComplete, playWithSpeechSynthesis, rate, speak])
+        chunked: true,
+      },
+    )
+  }, [cefrLevel, fullText, language, onListenComplete, rate, speakListening])
 
   const handleToggle = () => {
     if (isPlaying) {
       stop()
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-      }
       return
     }
     play()
@@ -78,15 +60,23 @@ export function AudioPlayer({
   useEffect(
     () => () => {
       stop()
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-      }
     },
     [stop],
   )
 
   const busy = isLoading
   const active = isPlaying
+
+  const providerLabel =
+    lastProvider === 'openai'
+      ? 'OpenAI EN'
+      : lastProvider === 'elevenlabs'
+        ? 'ElevenLabs EN'
+        : lastProvider === 'browser'
+          ? 'Tarayıcı EN'
+          : isCloudTtsConfigured()
+            ? 'İngilizce TTS'
+            : 'Tarayıcı EN'
 
   return (
     <div className="audio-player skill-surface skill-surface--listening">
@@ -108,7 +98,7 @@ export function AudioPlayer({
         </button>
         <div className="audio-player__meta">
           <Headphones size={16} aria-hidden="true" />
-          <span>{isCloudTtsConfigured() ? 'TTS dinleme' : 'Dinleme (tarayıcı)'}</span>
+          <span>{providerLabel}</span>
         </div>
         <div className="audio-player__rates" role="group" aria-label="Oynatma hızı">
           {RATES.map((candidate) => (
@@ -120,9 +110,6 @@ export function AudioPlayer({
                 setRate(candidate)
                 if (active) {
                   stop()
-                  if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel()
-                  }
                   setTimeout(play, 80)
                 }
               }}

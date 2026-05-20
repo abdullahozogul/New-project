@@ -1,5 +1,5 @@
-import type { TTSRequest } from '../../types/tts'
 import type { CEFRLevel } from '../../types'
+import type { PreparedTtsRequest } from './ttsLanguage'
 import { truncateForTts } from '../../utils/ttsUtils'
 
 export const OPENAI_SPEED_BY_CEFR: Record<CEFRLevel, number> = {
@@ -12,17 +12,20 @@ export const OPENAI_SPEED_BY_CEFR: Record<CEFRLevel, number> = {
 }
 
 export async function openaiTTSSynthesize(
-  request: TTSRequest,
+  request: PreparedTtsRequest,
   apiKey: string,
 ): Promise<ArrayBuffer> {
   if (!apiKey) {
     throw new Error('openai_key_missing')
   }
 
+  const { profile } = request
   const speed =
     request.speed ??
     (request.cefrLevel ? OPENAI_SPEED_BY_CEFR[request.cefrLevel] : 1)
   const text = truncateForTts(request.text, request.useCase)
+  const voice = (request.voice as PreparedTtsRequest['profile']['openaiVoice'] | undefined) ??
+    profile.openaiVoice
 
   const res = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
@@ -33,7 +36,7 @@ export async function openaiTTSSynthesize(
     body: JSON.stringify({
       model: 'tts-1',
       input: text,
-      voice: request.voice ?? 'nova',
+      voice,
       speed,
       response_format: 'mp3',
     }),

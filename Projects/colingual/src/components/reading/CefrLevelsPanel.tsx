@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Clock3 } from 'lucide-react'
 import type { Level } from '../../data'
 import { articleFromBundle, type NewsStoryBundle } from '../../lib/cefrNews'
+import { StorySourceCitation } from './StorySourceCitation'
 import './CefrLevelsPanel.css'
 
 type CefrLevelsPanelProps = {
@@ -62,6 +63,11 @@ export function CefrLevelsPanel({ bundle, activeLevel, renderParagraph }: CefrLe
               {renderParagraph(paragraph)}
             </div>
           ))}
+          <StorySourceCitation
+            sourceName={bundle.sourceName}
+            sourceUrl={bundle.sourceUrl}
+            isLive={bundle.isLive}
+          />
         </div>
       </article>
     </section>

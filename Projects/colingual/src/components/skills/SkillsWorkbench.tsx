@@ -13,7 +13,7 @@ import { WritingFeedbackPanel } from '../ai/WritingFeedbackPanel'
 import { SpeakingFeedbackCard } from '../ai/SpeakingFeedbackCard'
 import { FeedbackOverlay } from '../shared/FeedbackOverlay'
 import { TTSPlayer } from '../audio/TTSPlayer'
-import { localeToLanguage } from '../../utils/ttsUtils'
+import { localeToLanguage, resolveTtsProfile } from '../../utils/ttsUtils'
 import { fetchWritingFeedback, fetchSpeakingEvaluation } from '../../services/aiService'
 import { useProgressStore } from '../../stores/useProgressStore'
 import './skills-themes.css'
@@ -59,7 +59,9 @@ export function SkillsWorkbench({
   const [speakingOpen, setSpeakingOpen] = useState(false)
   const [aiWordTip, setAiWordTip] = useState<string | null>(null)
   const [lastWord, setLastWord] = useState<string | null>(null)
-  const ttsLanguage = localeToLanguage(locale)
+  const articlePlainText = article.paragraphs.join(' ')
+  const ttsProfile = resolveTtsProfile(localeToLanguage(locale), articlePlainText)
+  const ttsLanguage = ttsProfile.language
   const recordSession = useProgressStore((state) => state.recordSession)
 
   const transcript = useMemo(() => article.paragraphs.join(' '), [article.paragraphs])

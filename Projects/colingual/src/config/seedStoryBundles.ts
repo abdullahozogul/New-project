@@ -13,6 +13,7 @@ function bundle(
   return {
     storyId,
     sourceTitle,
+    sourceName: 'Colingual',
     category,
     fetchedAt: 0,
     imageTone,

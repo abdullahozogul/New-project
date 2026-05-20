@@ -1,30 +1,128 @@
-/** Detect Supabase OAuth return (PKCE ?code= or legacy hash tokens). */
-export function isSupabaseAuthCallback(): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
+import { MOBILE_AUTH_CALLBACK_URL, PENDING_AUTH_CALLBACK_KEY } from './authConstants'
 
-  // TODO(mobile): handle deep link in mobileAuthListener.ts
-  const search = new URLSearchParams(window.location.search)
-  if (search.has('code')) {
-    return true
-  }
-
-  const hash = window.location.hash.slice(1)
-  if (!hash) {
-    return false
-  }
-
-  const hashParams = new URLSearchParams(hash)
-  return (
-    hashParams.has('access_token') ||
-    hashParams.has('error') ||
-    hashParams.has('error_description')
-  )
+export type AuthCallbackParams = {
+  code?: string
+  accessToken?: string
+  refreshToken?: string
+  error?: string
+  errorDescription?: string
 }
 
-/** Remove OAuth params from URL after session is established. */
+function paramsFromSearch(search: URLSearchParams): AuthCallbackParams | null {
+  const code = search.get('code')
+  const accessToken = search.get('access_token')
+  const refreshToken = search.get('refresh_token')
+  const error = search.get('error')
+  const errorDescription = search.get('error_description')
+
+  if (code) {
+    return { code, error: error ?? undefined, errorDescription: errorDescription ?? undefined }
+  }
+
+  if (accessToken && refreshToken) {
+    return {
+      accessToken,
+      refreshToken,
+      error: error ?? undefined,
+      errorDescription: errorDescription ?? undefined,
+    }
+  }
+
+  if (error || errorDescription) {
+    return { error: error ?? undefined, errorDescription: errorDescription ?? undefined }
+  }
+
+  return null
+}
+
+/** Parse Supabase OAuth return from a full URL (web origin or native deep link). */
+export function parseAuthCallbackUrl(url: string): AuthCallbackParams | null {
+  try {
+    const parsed = new URL(url)
+
+    const fromSearch = paramsFromSearch(parsed.searchParams)
+    if (fromSearch) {
+      return fromSearch
+    }
+
+    const hash = parsed.hash.slice(1)
+    if (hash) {
+      return paramsFromSearch(new URLSearchParams(hash))
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function isAuthCallbackUrl(url: string): boolean {
+  if (!url) {
+    return false
+  }
+
+  try {
+    const parsed = new URL(url)
+    if (parsed.href.startsWith(MOBILE_AUTH_CALLBACK_URL)) {
+      return parseAuthCallbackUrl(url) !== null
+    }
+  } catch {
+    return false
+  }
+
+  return parseAuthCallbackUrl(url) !== null
+}
+
+export function setPendingAuthCallbackUrl(url: string): void {
+  try {
+    sessionStorage.setItem(PENDING_AUTH_CALLBACK_KEY, url)
+  } catch {
+    // ignore
+  }
+}
+
+export function clearPendingAuthCallbackUrl(): void {
+  try {
+    sessionStorage.removeItem(PENDING_AUTH_CALLBACK_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+function readPendingAuthCallbackUrl(): string | null {
+  try {
+    return sessionStorage.getItem(PENDING_AUTH_CALLBACK_KEY)
+  } catch {
+    return null
+  }
+}
+
+/** Active OAuth return URL: browser location or stored native deep link. */
+export function getAuthCallbackUrl(): string | null {
+  if (typeof window !== 'undefined') {
+    const href = window.location.href
+    if (isAuthCallbackUrl(href)) {
+      return href
+    }
+  }
+
+  const pending = readPendingAuthCallbackUrl()
+  if (pending && isAuthCallbackUrl(pending)) {
+    return pending
+  }
+
+  return null
+}
+
+/** True while an OAuth / magic-link return must be exchanged for a session. */
+export function isSupabaseAuthCallback(): boolean {
+  return getAuthCallbackUrl() !== null
+}
+
+/** Remove OAuth params from the browser URL and clear stored deep-link payload. */
 export function clearSupabaseAuthCallbackFromUrl(): void {
+  clearPendingAuthCallbackUrl()
+
   if (typeof window === 'undefined') {
     return
   }

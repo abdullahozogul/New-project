@@ -76,6 +76,7 @@ All text types. Reading purpose: reaching implicit meaning / using reference sou
 export type TtflPromptContext = {
   topic: string
   topicSummary?: string
+  sourceArticle?: string
   nativeLanguageLabel: string
 }
 
@@ -93,8 +94,11 @@ export function buildTtflTurkishCefrSystemInstruction(context: TtflPromptContext
     '- Increase cognitive and linguistic complexity progressively.',
     '- Share the same core facts and thematic topic across all five levels.',
     '',
-    `TOPIC (from current news — adapt faithfully, do not sensationalize): ${context.topic}`,
-    context.topicSummary ? `SOURCE SUMMARY: ${context.topicSummary}` : '',
+    `TOPIC (from current news — translate/adapt faithfully, do not sensationalize): ${context.topic}`,
+    context.sourceArticle ?
+      `SOURCE ARTICLE (published news — use only these facts):\n${context.sourceArticle.slice(0, 5500)}`
+    : context.topicSummary ? `SOURCE SUMMARY: ${context.topicSummary}`
+    : '',
     '',
     'READING PURPOSES (choose the best fit per level and state it in readingPurpose):',
     TTFL_READING_PURPOSES.join('; '),

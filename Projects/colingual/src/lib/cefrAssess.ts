@@ -1,5 +1,6 @@
 import type { Level } from '../data'
 import { levels } from '../data'
+import { apiPostJson } from './apiClient'
 
 /**
  * Lightweight CEFR estimate inspired by sentence-level difficulty research
@@ -127,15 +128,7 @@ export function levelsMatch(selected: Level, estimated: Level): boolean {
 
 export async function fetchRemoteCefrAssessment(text: string): Promise<CefrTextAssessment | null> {
   try {
-    const response = await fetch('/api/cefr/assess', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    })
-    if (!response.ok) {
-      return null
-    }
-    return (await response.json()) as CefrTextAssessment
+    return await apiPostJson<CefrTextAssessment>('/cefr/assess', { text })
   } catch {
     return null
   }

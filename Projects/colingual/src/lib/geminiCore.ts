@@ -1,6 +1,14 @@
+import { apiFetch, resolveApiUrl } from './apiClient'
+import { isGeminiQuotaBlocked, markGeminiQuotaExceeded } from './geminiQuota'
+
 /** Default model for Colingual AI — Google Gemini 2.5 Flash. */
 export const GEMINI_MODEL_DEFAULT = 'gemini-2.5-flash'
 
+function noteGeminiRateLimit(status: number, errText: string): void {
+  if (status === 429 || errText.includes('quota') || errText.includes('RESOURCE_EXHAUSTED')) {
+    markGeminiQuotaExceeded()
+  }
+}
 export function resolveGeminiModel(): string {
   const fromEnv = import.meta.env.VITE_GEMINI_MODEL?.trim()
   return fromEnv || GEMINI_MODEL_DEFAULT
@@ -12,7 +20,7 @@ function devGeminiProxyEndpoint(): string | null {
   if (!import.meta.env.DEV) {
     return null
   }
-  return '/api/gemini/generate'
+  return resolveApiUrl('/gemini/generate')
 }
 
 export function isGeminiConfigured(): boolean {
@@ -54,6 +62,7 @@ async function generateViaGoogleAiStudio(
 
   if (!response.ok) {
     const errText = await response.text()
+    noteGeminiRateLimit(response.status, errText)
     throw new Error(`gemini_http_${response.status}: ${errText.slice(0, 200)}`)
   }
 
@@ -86,7 +95,7 @@ async function generateViaAssistantProxy(
     throw new Error('missing_proxy')
   }
 
-  const response = await fetch(endpoint, {
+  const response = await apiFetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -99,6 +108,7 @@ async function generateViaAssistantProxy(
 
   if (!response.ok) {
     const errText = await response.text()
+    noteGeminiRateLimit(response.status, errText)
     throw new Error(`proxy_http_${response.status}: ${errText.slice(0, 200)}`)
   }
 
@@ -141,6 +151,10 @@ export async function generateGeminiContents(
   contents: GeminiContent[],
   generationConfig?: Record<string, unknown>,
 ): Promise<string> {
+  if (isGeminiQuotaBlocked()) {
+    throw new Error('gemini_quota_blocked')
+  }
+
   const model = resolveGeminiModel()
   const proxyUrl =
     import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() || devGeminiProxyEndpoint() || ''

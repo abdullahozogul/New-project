@@ -1,0 +1,34 @@
+/**
+ * Self-hosted fonts (@fontsource) — bundled into dist/assets for offline Capacitor.
+ * latin + latin-ext covers EN/TR UI; no Google Fonts CDN.
+ */
+
+/* Inter — body / general UI */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-ext-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-ext-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-ext-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/inter/latin-ext-700.css';
+
+/* DM Sans — top bar */
+@import '@fontsource/dm-sans/latin-400.css';
+@import '@fontsource/dm-sans/latin-ext-400.css';
+@import '@fontsource/dm-sans/latin-500.css';
+@import '@fontsource/dm-sans/latin-ext-500.css';
+@import '@fontsource/dm-sans/latin-600.css';
+@import '@fontsource/dm-sans/latin-ext-600.css';
+@import '@fontsource/dm-sans/latin-700.css';
+@import '@fontsource/dm-sans/latin-ext-700.css';
+
+/* Work Sans — headings / brand */
+@import '@fontsource/work-sans/latin-500.css';
+@import '@fontsource/work-sans/latin-ext-500.css';
+@import '@fontsource/work-sans/latin-600.css';
+@import '@fontsource/work-sans/latin-ext-600.css';
+@import '@fontsource/work-sans/latin-700.css';
+@import '@fontsource/work-sans/latin-ext-700.css';
+@import '@fontsource/work-sans/latin-900.css';
+@import '@fontsource/work-sans/latin-ext-900.css';

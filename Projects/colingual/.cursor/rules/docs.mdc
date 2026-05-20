@@ -13,6 +13,7 @@ Tam README: proje kökünde `README.md`.
 - **Pratik:** `SkillsWorkbench` (#skills), koç, senaryolar, study material, SRS review
 - **İlerleme:** CEFR dashboard, ClassroomIO yolu, AI course outline, XP/streak/badges
 - **Daha fazla:** ScholarShelf, community (demo), ecosystem panel
+- **Giriş:** [Flutter Login Page UI](https://github.com/afgprogrammer/Flutter-Login-Page-UI) uyarlaması — `LoginPage.tsx`, Supabase e-posta/Google, misafir modu
 
 ## Harici pattern kaynakları
 

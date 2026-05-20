@@ -7,20 +7,17 @@ import type {
   WritingFeedbackRequest,
   WritingFeedbackResponse,
 } from '../types'
+import { apiPostJson } from '../lib/apiClient'
 import { generateGeminiJson, isGeminiConfigured } from '../lib/geminiCore'
 
 export async function fetchWritingFeedback(
   request: WritingFeedbackRequest,
 ): Promise<WritingFeedbackResponse> {
-  const response = await fetch('/api/ai/writing-feedback', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  })
-  if (!response.ok) {
+  try {
+    return await apiPostJson<WritingFeedbackResponse>('/ai/writing-feedback', request)
+  } catch {
     throw new Error('writing_feedback_failed')
   }
-  return response.json() as Promise<WritingFeedbackResponse>
 }
 
 export async function fetchSpeakingEvaluation(

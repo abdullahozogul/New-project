@@ -30,6 +30,19 @@ def strip_html(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", value or "")).strip()
 
 
+def split_headline_source(raw_title: str) -> tuple[str, str | None]:
+    """Google News RSS titles are often 'Headline - Publisher'."""
+    trimmed = (raw_title or "").strip()
+    sep = trimmed.rfind(" - ")
+    if sep <= 0 or sep >= len(trimmed) - 3:
+        return trimmed, None
+    title = trimmed[:sep].strip()
+    source = trimmed[sep + 3 :].strip()
+    if not source or len(source) > 100 or len(title) < 8:
+        return trimmed, None
+    return title, source
+
+
 def fetch_headlines(limit: int) -> list[dict[str, str]]:
     url = f"{RSS2JSON}?rss_url={quote(GOOGLE_NEWS_RSS, safe='')}"
     response = httpx.get(url, timeout=30.0)
@@ -39,16 +52,18 @@ def fetch_headlines(limit: int) -> list[dict[str, str]]:
 
     headlines: list[dict[str, str]] = []
     for item in items[:limit]:
-        title = (item.get("title") or "").strip()
-        if not title:
+        raw_title = (item.get("title") or "").strip()
+        if not raw_title:
             continue
-        headlines.append(
-            {
-                "title": title,
-                "summary": strip_html(item.get("description") or title)[:600],
-                "link": item.get("link") or "",
-            }
-        )
+        title, source = split_headline_source(raw_title)
+        row: dict[str, str] = {
+            "title": title,
+            "summary": strip_html(item.get("description") or raw_title)[:600],
+            "link": item.get("link") or "",
+        }
+        if source:
+            row["source"] = source
+        headlines.append(row)
     return headlines
 
 

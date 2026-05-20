@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import {
   BookMarked,
@@ -41,11 +41,11 @@ import {
   type Level,
   type VocabularyItem,
 } from './data'
-import { getRedirectUrl } from './lib/auth'
 import { supabase, supabaseConfigured } from './lib/supabase'
 import { ScholarShelfPanel } from './components/library/ScholarShelfPanel'
 import { CefrAssessmentBadge } from './components/reading/CefrAssessmentBadge'
 import { CefrLevelsPanel } from './components/reading/CefrLevelsPanel'
+import { StorySourceCitation } from './components/reading/StorySourceCitation'
 import { assessArticleParagraphs } from './lib/cefrAssess'
 import {
   addToShelf,
@@ -59,11 +59,23 @@ import {
   articleFromBundle,
   availableLevelsForBundle,
   buildCefrNewsBundle,
+  buildMinimalNewsBundle,
   buildStoryQueue,
   type NewsStoryBundle,
 } from './lib/cefrNews'
 import { generateCoachReply, isGeminiAiConfigured, offlineCoachFallback, resolveGeminiModel, type CoachTurn } from './lib/gemini'
-import { fetchLiveNewsHeadlines, loadSeenHeadlineIds } from './lib/newsFeed'
+import {
+  geminiQuotaUserMessage,
+  isGeminiQuotaBlocked,
+  isGeminiQuotaError,
+  markGeminiQuotaExceeded,
+} from './lib/geminiQuota'
+import {
+  fetchLiveNewsHeadlines,
+  loadSeenHeadlineIds,
+  prepareHeadlineForCefr,
+} from './lib/newsFeed'
+import { fetchHeadlineViaScrapeApi } from './services/textFetchService'
 import { getLemonSqueezyPremiumCheckoutUrl } from './lib/lemonSqueezy'
 import { handleExternalLinkClick } from './lib/openExternalLink'
 import { TopBar } from './components/layout/TopBar'
@@ -93,13 +105,33 @@ import { VocabularyBank } from './components/vocabulary/VocabularyBank'
 import { useXpLevelUp } from './hooks/useXpLevelUp'
 import { useSRSStore } from './stores/useSRSStore'
 import { levelFromAppLevel } from './utils/cefrUtils'
-import { localeToLanguage } from './utils/ttsUtils'
-import { isCloudTtsConfigured, tts } from './services/tts/ttsService'
+import { resolveTtsProfile } from './utils/ttsUtils'
+import { playListeningSequence } from './services/tts/listeningPlayback'
 import { useStreak } from './hooks/useStreak'
 import { useProgressStore } from './stores/useProgressStore'
 import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
 import { VIEW_TITLES } from './config/navigation'
 import { useAppNavigation } from './hooks/useAppNavigation'
+import { LoginPage } from './components/auth/LoginPage'
+import {
+  clearOAuthPending,
+  clearSupabaseAuthCallbackFromUrl,
+  isOAuthPending,
+  isSupabaseAuthCallback,
+} from './lib/authCallback'
+import { signInWithGoogleOAuth } from './lib/auth'
+import { handleMobileAuthCallbackUrl, resolveInitialAuthUser } from './lib/authBootstrap'
+import { registerMobileAuthCallbackHandler } from './lib/mobileAuthListener'
+
+const AUTH_DISMISS_KEY = 'colingual-auth-dismissed'
+
+function readAuthDismissed(): boolean {
+  try {
+    return localStorage.getItem(AUTH_DISMISS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
@@ -107,7 +139,11 @@ function App() {
   const [level, setLevel] = useState<Level>('B1')
   const [goal, setGoal] = useState(learningGoals[0])
   const [user, setUser] = useState<User | null>(null)
-  const [selectedStoryKey, setSelectedStoryKey] = useState('city-garden')
+  const [authReady, setAuthReady] = useState(
+    () => !supabaseConfigured && !isSupabaseAuthCallback() && !isOAuthPending(),
+  )
+  const [loginDismissed, setLoginDismissed] = useState(readAuthDismissed)
+  const [selectedStoryKey, setSelectedStoryKey] = useState<string | null>(null)
   const [liveBundles, setLiveBundles] = useState<NewsStoryBundle[]>([])
   const [shelfItems, setShelfItems] = useState<ShelfItem[]>(() => loadShelf())
   const [coachUsed, setCoachUsed] = useState(() => loadCoachUsed())
@@ -142,15 +178,37 @@ function App() {
     },
   ])
 
-  const storyBundles = useMemo(
-    () => [...liveBundles, ...seedStoryBundles],
-    [liveBundles],
-  )
+  const liveNewsReading = isGeminiAiConfigured()
+
+  const storyBundles = useMemo(() => {
+    const bundlesForLanguage = liveBundles.filter(
+      (bundle) => !bundle.targetLanguageCode || bundle.targetLanguageCode === targetLanguage,
+    )
+    return liveNewsReading ?
+        bundlesForLanguage
+      : [...bundlesForLanguage, ...seedStoryBundles]
+  }, [liveBundles, liveNewsReading, targetLanguage])
 
   const storyQueue = useMemo(
-    () => buildStoryQueue(liveBundles, seedStoryBundles, articles),
-    [liveBundles],
+    () =>
+      buildStoryQueue(
+        liveNewsReading ? storyBundles : liveBundles,
+        liveNewsReading ? [] : seedStoryBundles,
+        liveNewsReading ? [] : articles,
+      ),
+    [storyBundles, liveBundles, liveNewsReading],
   )
+
+  useEffect(() => {
+    if (storyQueue.length === 0) {
+      return
+    }
+    const selectionValid =
+      selectedStoryKey !== null && storyQueue.some((item) => item.key === selectedStoryKey)
+    if (!selectionValid) {
+      setSelectedStoryKey(storyQueue[0].key)
+    }
+  }, [storyQueue, selectedStoryKey])
 
   const selectedStoryBundle = useMemo(
     () => storyBundles.find((bundle) => bundle.storyId === selectedStoryKey) ?? null,
@@ -182,13 +240,40 @@ function App() {
         articles[0]
       )
     }
+    if (liveNewsReading) {
+      return {
+        id: 'live-news-pending',
+        level: effectiveLevel,
+        category: 'News',
+        title: newsLoading ? 'Canlı haber yükleniyor…' : 'Canlı haber bekleniyor',
+        deck: 'Kaynak siteden metin taranıp CEFR seviyelerine uyarlanır.',
+        minutes: 0,
+        listening: 'News voice',
+        video: 'News clip',
+        imageTone: 'blue' as const,
+        paragraphs: [
+          newsLoading
+            ? 'Haber başlıkları alınıyor ve orijinal makale metni çekiliyor.'
+            : 'Yenile düğmesine basarak yeni bir canlı haber getirin.',
+        ],
+        vocabulary: [],
+        isLive: true,
+      }
+    }
     const seed =
       articles.find((article) => article.id === selectedStoryKey) ??
       articles.find((article) => article.storyId === selectedStoryKey)
     return seed ?? articles[0]
-  }, [selectedStoryBundle, selectedStoryKey, effectiveLevel, readingLevels])
+  }, [
+    selectedStoryBundle,
+    selectedStoryKey,
+    effectiveLevel,
+    readingLevels,
+    liveNewsReading,
+    newsLoading,
+  ])
 
-  const currentStoryKey = selectedStoryBundle?.storyId ?? selectedStoryKey
+  const currentStoryKey = selectedStoryBundle?.storyId ?? selectedStoryKey ?? ''
 
   const cefrAssessment = useMemo(
     () => assessArticleParagraphs(selectedArticle.paragraphs),
@@ -236,11 +321,44 @@ function App() {
     }
   }, [streakAtRisk])
 
+  const newsErrorMessage = (error: unknown): string => {
+    const message = error instanceof Error ? error.message : 'news_failed'
+    if (message === 'gemini_not_configured') {
+      return 'CEFR uyarlaması için Gemini anahtarı gerekli (.env.local).'
+    }
+    if (message.startsWith('scrape_') || message.includes('scrape')) {
+      return 'Metin kaynağına ulaşılamadı. npm run dev çalışıyor mu? Biraz sonra yenileyin.'
+    }
+    if (message === 'no_headlines' || message.startsWith('news_http_') || message.startsWith('rss_')) {
+      return 'Haber akışına ulaşılamadı. Biraz sonra yenileyin.'
+    }
+    if (message.includes('missing_gemini_key') || message.startsWith('gemini_http_')) {
+      return 'Gemini yanıt vermedi. API anahtarınızı kontrol edin.'
+    }
+    if (message.includes('429') || message === 'gemini_quota_blocked') {
+      return geminiQuotaUserMessage()
+    }
+    if (message.startsWith('proxy_http_')) {
+      return 'Gemini proxy hatası. Vite sunucusunu yeniden başlatın.'
+    }
+    if (message === 'empty_cefr_bundle' || message === 'empty_response') {
+      return 'CEFR uyarlaması tamamlanamadı; kaynak metin gösteriliyor olabilir.'
+    }
+    return 'Metin yüklenemedi. Yenile düğmesine tekrar basın.'
+  }
+
+  const loadNewsInFlight = useRef(false)
+
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
-      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      setNewsError('Canlı metin için .env.local dosyasına VITE_GEMINI_API_KEY ekleyin.')
       return
     }
+
+    if (loadNewsInFlight.current) {
+      return
+    }
+    loadNewsInFlight.current = true
 
     setNewsLoading(true)
     setNewsError(null)
@@ -250,35 +368,110 @@ function App() {
         ...loadSeenHeadlineIds(),
         ...liveBundles.map((bundle) => bundle.storyId),
       ]
-      const headlines = await fetchLiveNewsHeadlines({
-        excludeIds,
-        limit: 16,
-        languageCode: targetLanguage,
-      })
-      if (headlines.length === 0) {
+
+      let headline =
+        (await fetchHeadlineViaScrapeApi({
+          language: targetLanguage,
+          cefrLevel: effectiveLevel,
+          source: 'rss',
+        })) ??
+        (await fetchHeadlineViaScrapeApi({
+          language: targetLanguage,
+          cefrLevel: effectiveLevel,
+          source: 'wikipedia',
+        }))
+
+      if (!headline) {
+        const headlines = await fetchLiveNewsHeadlines({
+          excludeIds,
+          limit: 8,
+          languageCode: targetLanguage,
+        })
+        if (headlines.length === 0) {
+          throw new Error('no_headlines')
+        }
+        const prepared = await prepareHeadlineForCefr(headlines)
+        headline = prepared ?? headlines[0] ?? null
+      }
+
+      if (!headline) {
         throw new Error('no_headlines')
       }
 
-      const headline = headlines[0]
-      const bundle = await buildCefrNewsBundle(headline, {
+      const enriched = await prepareHeadlineForCefr([headline])
+      headline = enriched ?? headline
+
+      const bundleOptions = {
         targetLanguageCode: targetLanguage,
         targetLanguageLabel: targetLanguageOption?.label ?? targetLanguage,
         nativeLanguageLabel: nativeLanguageOption?.label ?? nativeLanguage,
-      })
+      }
 
-      setLiveBundles((current) => [bundle, ...current.filter((item) => item.storyId !== bundle.storyId)])
+      let bundle: NewsStoryBundle
+      let statusMessage: string | null = null
+
+      if (isGeminiQuotaBlocked()) {
+        bundle = buildMinimalNewsBundle(headline, bundleOptions)
+        statusMessage = geminiQuotaUserMessage()
+      } else {
+        try {
+          bundle = await buildCefrNewsBundle(headline, bundleOptions)
+        } catch (adaptError) {
+          if (isGeminiQuotaError(adaptError)) {
+            markGeminiQuotaExceeded()
+            statusMessage = geminiQuotaUserMessage()
+          } else {
+            if (import.meta.env.DEV) {
+              console.warn('[colingual] CEFR adaptation failed, using scraped source text', adaptError)
+            }
+            statusMessage =
+              'Kaynak metin yüklendi; AI CEFR uyarlaması yapılamadı. Metni okuyabilirsiniz.'
+          }
+          bundle = buildMinimalNewsBundle(headline, bundleOptions)
+        }
+      }
+
+      setNewsError(statusMessage)
+
+      setLiveBundles((current) => {
+        const sameLanguage = current.filter(
+          (item) =>
+            item.targetLanguageCode === targetLanguage || !item.targetLanguageCode,
+        )
+        return [bundle, ...sameLanguage.filter((item) => item.storyId !== bundle.storyId)]
+      })
       setSelectedStoryKey(bundle.storyId)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'news_failed'
-      setNewsError(
-        message === 'gemini_not_configured'
-          ? 'Configure Gemini to adapt headlines to CEFR levels.'
-          : 'Could not load a new story. Try again in a moment.',
-      )
+      setNewsError(newsErrorMessage(error))
     } finally {
+      loadNewsInFlight.current = false
       setNewsLoading(false)
     }
   }
+
+  const skipTargetLanguageReload = useRef(true)
+
+  useEffect(() => {
+    if (!isGeminiAiConfigured() || !liveNewsReading) {
+      return
+    }
+
+    if (skipTargetLanguageReload.current) {
+      skipTargetLanguageReload.current = false
+      return
+    }
+
+    setLiveBundles((current) =>
+      current.filter(
+        (bundle) =>
+          bundle.targetLanguageCode === targetLanguage || !bundle.targetLanguageCode,
+      ),
+    )
+    setSelectedStoryKey(null)
+    setNewsError(null)
+    void loadFreshNewsStory()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when learner changes target language
+  }, [targetLanguage, liveNewsReading])
 
   useEffect(() => {
     if (!isGeminiAiConfigured() || liveBundles.length > 0 || newsLoading) {
@@ -286,7 +479,7 @@ function App() {
     }
 
     void loadFreshNewsStory()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount when AI is ready
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load when AI is ready
   }, [])
 
   const lemonSqueezyCheckoutUrl = useMemo(() => getLemonSqueezyPremiumCheckoutUrl(), [])
@@ -339,6 +532,9 @@ function App() {
   )
 
   const toggleShelfStory = () => {
+    if (!currentStoryKey) {
+      return
+    }
     if (onShelf) {
       setShelfItems(removeFromShelf(currentStoryKey))
       return
@@ -356,35 +552,101 @@ function App() {
   }
 
   useEffect(() => {
-    if (!supabase) {
+    const client = supabase
+    if (!client) {
       setUser(null)
+      setAuthReady(true)
       return
     }
 
     let cancelled = false
 
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (cancelled) {
-          return
+    const finishAuthBootstrap = () => {
+      if (!cancelled) {
+        setAuthReady(true)
+        clearOAuthPending()
+      }
+    }
+
+    const applySession = (sessionUser: User | null) => {
+      if (cancelled) {
+        return
+      }
+      setUser(sessionUser)
+      if (sessionUser) {
+        setLoginDismissed(false)
+        clearOAuthPending()
+        try {
+          localStorage.removeItem(AUTH_DISMISS_KEY)
+        } catch {
+          // ignore
         }
-        setUser(data.session?.user ?? null)
+        if (isSupabaseAuthCallback()) {
+          clearSupabaseAuthCallbackFromUrl()
+        }
+      }
+    }
+
+    void resolveInitialAuthUser(client)
+      .then((sessionUser) => {
+        applySession(sessionUser)
       })
       .catch(() => {
-        if (cancelled) {
-          return
-        }
-        setUser(null)
+        applySession(null)
       })
+      .finally(finishAuthBootstrap)
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    const oauthTimeout = window.setTimeout(() => {
+      if (!cancelled) {
+        clearOAuthPending()
+        setAuthReady(true)
+      }
+    }, 12_000)
+
+    const { data: subscription } = client.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        applySession(null)
+        return
+      }
+      if (session?.user) {
+        applySession(session.user)
+      }
+    })
+
+    const unregisterMobileAuth = registerMobileAuthCallbackHandler((url) => {
+      void handleMobileAuthCallbackUrl(client, url)
+        .then((sessionUser) => {
+          applySession(sessionUser)
+        })
+        .catch(() => {
+          applySession(null)
+        })
+        .finally(finishAuthBootstrap)
     })
 
     return () => {
       cancelled = true
+      window.clearTimeout(oauthTimeout)
       subscription.subscription.unsubscribe()
+      unregisterMobileAuth()
+    }
+  }, [])
+
+  const dismissLoginScreen = useCallback(() => {
+    setLoginDismissed(true)
+    try {
+      localStorage.setItem(AUTH_DISMISS_KEY, '1')
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const openLoginScreen = useCallback(() => {
+    setLoginDismissed(false)
+    try {
+      localStorage.removeItem(AUTH_DISMISS_KEY)
+    } catch {
+      // ignore
     }
   }, [])
 
@@ -495,37 +757,17 @@ function App() {
 
   const speakArticle = async (article: Article) => {
     const text = [article.title, ...article.paragraphs].join('. ')
-    const language = localeToLanguage(targetLanguageOption?.locale)
+    const ttsProfile = resolveTtsProfile(targetLanguage, text)
+    const language = ttsProfile.language
     const cefr = levelFromAppLevel(effectiveLevel)
     const rate = article.level === 'A1' || article.level === 'A2' ? 0.82 : 0.96
 
-    if (isCloudTtsConfigured()) {
-      try {
-        const result = await tts.listening(text, language, cefr, rate)
-        const audio = new Audio(result.audioUrl)
-        audio.playbackRate = rate
-        audio.onended = () => {
-          URL.revokeObjectURL(result.audioUrl)
-          recordSession('listening')
-        }
-        audio.onerror = () => URL.revokeObjectURL(result.audioUrl)
-        await audio.play()
-        return
-      } catch {
-        // fall through to browser TTS
-      }
-    }
-
-    if (!('speechSynthesis' in window)) {
-      return
-    }
-
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = targetLanguageOption?.locale ?? 'en-US'
-    utterance.rate = rate
-    utterance.onend = () => recordSession('listening')
-    window.speechSynthesis.speak(utterance)
+    await playListeningSequence(text, language, {
+      cefrLevel: cefr,
+      speed: rate,
+      playbackRate: rate,
+      onEnded: () => recordSession('listening'),
+    })
   }
 
   const renderClickableParagraph = (paragraph: string) => {
@@ -606,20 +848,10 @@ function App() {
   }
 
   const signInWithGoogle = async () => {
-    if (!supabase) {
-      return
-    }
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: getRedirectUrl(),
-      },
-    })
-
-    if (error) {
+    const result = await signInWithGoogleOAuth()
+    if (result.ok === false) {
       // eslint-disable-next-line no-console
-      console.error('Google sign-in failed', error)
+      console.error('Google sign-in failed', result.message)
     }
   }
 
@@ -641,6 +873,32 @@ function App() {
     (user?.user_metadata?.full_name as string | undefined) ||
     (user?.user_metadata?.name as string | undefined) ||
     (userEmail ? userEmail.split('@')[0] : 'User')
+
+  const resolvingOAuth =
+    !user && (isSupabaseAuthCallback() || isOAuthPending() || !authReady)
+
+  if (resolvingOAuth) {
+    return (
+      <div className="auth-boot" role="status" aria-live="polite">
+        <Loader2 size={32} className="auth-boot__spin" aria-hidden="true" />
+        <p>
+          {isSupabaseAuthCallback() || isOAuthPending()
+            ? 'Google ile giriş tamamlanıyor…'
+            : 'Oturum kontrol ediliyor…'}
+        </p>
+      </div>
+    )
+  }
+
+  if (!user && !loginDismissed) {
+    return (
+      <LoginPage
+        supabaseConfigured={supabaseConfigured}
+        onGoogleSignIn={() => void signInWithGoogle()}
+        onContinueAsGuest={dismissLoginScreen}
+      />
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -671,6 +929,7 @@ function App() {
             onGoogleSignIn={() => {
               void signInWithGoogle()
             }}
+            onOpenLogin={openLoginScreen}
             googleSignInDisabled={!supabaseConfigured}
             plansHref="#more"
             onSignOut={() => {
@@ -718,13 +977,13 @@ function App() {
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">Orijinal metin</p>
-                <h2 id="article-list-title">Hikâye seç</h2>
+                <h2 id="article-list-title">Metin seç</h2>
               </div>
               <div className="article-list-actions">
                 <button
                   className="icon-button news-refresh-btn"
                   type="button"
-                  aria-label="Fetch a new live news story"
+                  aria-label="Yeni canlı metin yükle"
                   disabled={newsLoading}
                   onClick={() => void loadFreshNewsStory()}
                 >
@@ -738,7 +997,13 @@ function App() {
 
             {newsError ? <p className="news-status news-status--error">{newsError}</p> : null}
             {newsLoading && liveBundles.length === 0 ? (
-              <p className="news-status">Fetching today&apos;s story and building CEFR versions…</p>
+              <p className="news-status">
+                RSS kaynaklarından metin çekiliyor (BBC, Guardian…), ardından CEFR sürümleri
+                oluşturuluyor…
+              </p>
+            ) : null}
+            {liveNewsReading && !newsLoading && liveBundles.length === 0 && storyQueue.length === 0 ? (
+              <p className="news-status">Canlı haber yüklenemedi. Yenile düğmesine basın.</p>
             ) : null}
 
             <div className="article-stack">
@@ -755,7 +1020,8 @@ function App() {
                   <span>
                     <small>
                       {item.category}
-                      {item.isLive ? ' • Canlı' : ''}
+                      {item.sourceName ? ` · ${item.sourceName}` : ''}
+                      {item.isLive ? ' · Canlı' : ''}
                     </small>
                     <strong>{item.title}</strong>
                     <em>{item.minutes} min</em>
@@ -823,20 +1089,6 @@ function App() {
                   </div>
                   <h2 id="reading-title">{selectedStoryBundle.sourceTitle}</h2>
                   <p className="deck">{selectedArticle.deck}</p>
-                  {selectedStoryBundle.sourceUrl ? (
-                    <p className="news-source">
-                      <a
-                        href={selectedStoryBundle.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(event) =>
-                          handleExternalLinkClick(event, selectedStoryBundle.sourceUrl)
-                        }
-                      >
-                        Original article
-                      </a>
-                    </p>
-                  ) : null}
                 </>
               ) : (
                 <>
@@ -863,6 +1115,11 @@ function App() {
                   {selectedArticle.paragraphs.map((paragraph) =>
                     renderClickableParagraph(paragraph),
                   )}
+                  <StorySourceCitation
+                    sourceName={selectedArticle.sourceName}
+                    sourceUrl={selectedArticle.sourceUrl}
+                    isLive={selectedArticle.isLive}
+                  />
                 </div>
               )}
             </article>

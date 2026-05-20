@@ -40,6 +40,7 @@ export type Article = {
   isLive?: boolean
   sourceUrl?: string
   sourceTitle?: string
+  sourceName?: string
   readingPurpose?: string
   grammarUsed?: string[]
 }

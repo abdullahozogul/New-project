@@ -1,10 +1,12 @@
+import { apiFetch } from '../../lib/apiClient'
 import type { CEFRLevel } from '../../types'
 import type { TTSProvider, TTSRequest, TTSResponse, TTSUseCase } from '../../types/tts'
 import { elevenLabsSynthesize } from './elevenLabsProvider'
 import { openaiTTSSynthesize } from './openaiTTSProvider'
 import { getCachedAudio, setCachedAudio } from './ttsCache'
+import { cacheVoiceKey, prepareTtsRequest, type PreparedTtsRequest } from './ttsLanguage'
 
-const PROVIDER_RULES: Record<TTSUseCase, TTSProvider> = {
+const USE_CASE_PROVIDER: Record<TTSUseCase, TTSProvider> = {
   listening_content: 'elevenlabs',
   pronunciation: 'elevenlabs',
   ui_feedback: 'openai',
@@ -12,15 +14,19 @@ const PROVIDER_RULES: Record<TTSUseCase, TTSProvider> = {
   word_definition: 'openai',
 }
 
-function voiceKey(request: TTSRequest): string {
-  return request.voice ?? request.language
-}
-
-async function fetchSynthesizeFromDevApi(request: TTSRequest): Promise<ArrayBuffer> {
-  const response = await fetch('/api/tts/synthesize', {
+async function fetchSynthesizeFromDevApi(request: PreparedTtsRequest): Promise<ArrayBuffer> {
+  const response = await apiFetch('/tts/synthesize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
+    body: JSON.stringify({
+      text: request.text,
+      language: request.language,
+      useCase: request.useCase,
+      cefrLevel: request.cefrLevel,
+      voice: request.voice,
+      speed: request.speed,
+      streaming: request.streaming,
+    }),
   })
 
   if (!response.ok) {
@@ -32,44 +38,48 @@ async function fetchSynthesizeFromDevApi(request: TTSRequest): Promise<ArrayBuff
 }
 
 async function synthesizeWithProviders(
-  request: TTSRequest,
+  request: PreparedTtsRequest,
   elevenKey: string,
   openaiKey: string,
 ): Promise<{ buffer: ArrayBuffer; provider: TTSProvider }> {
-  const preferred = PROVIDER_RULES[request.useCase]
+  const profileProvider = request.profile.preferProvider
 
   const tryEleven = () => elevenLabsSynthesize(request, elevenKey)
   const tryOpenai = () => openaiTTSSynthesize(request, openaiKey)
 
-  try {
-    if (preferred === 'elevenlabs' && elevenKey) {
-      return { buffer: await tryEleven(), provider: 'elevenlabs' }
+  const order: TTSProvider[] =
+    request.language === 'en'
+      ? request.useCase === 'listening_content' || request.useCase === 'pronunciation'
+        ? ['openai', 'elevenlabs']
+        : ['openai', 'elevenlabs']
+      : profileProvider === 'elevenlabs'
+        ? ['elevenlabs', 'openai']
+        : ['openai', 'elevenlabs']
+
+  let lastError: unknown
+  for (const provider of order) {
+    try {
+      if (provider === 'elevenlabs' && elevenKey) {
+        return { buffer: await tryEleven(), provider: 'elevenlabs' }
+      }
+      if (provider === 'openai' && openaiKey) {
+        return { buffer: await tryOpenai(), provider: 'openai' }
+      }
+    } catch (error) {
+      lastError = error
     }
-    if (openaiKey) {
-      return { buffer: await tryOpenai(), provider: 'openai' }
-    }
-    if (elevenKey) {
-      return { buffer: await tryEleven(), provider: 'elevenlabs' }
-    }
-    throw new Error('tts_no_provider_key')
-  } catch {
-    if (preferred === 'elevenlabs' && openaiKey) {
-      return { buffer: await tryOpenai(), provider: 'openai' }
-    }
-    if (elevenKey) {
-      return { buffer: await tryEleven(), provider: 'elevenlabs' }
-    }
-    throw new Error('tts_synthesis_failed')
   }
+
+  throw lastError instanceof Error ? lastError : new Error('tts_synthesis_failed')
 }
 
-async function synthesizeBuffer(request: TTSRequest): Promise<{ buffer: ArrayBuffer; provider: TTSProvider }> {
+async function synthesizeBuffer(request: PreparedTtsRequest): Promise<{ buffer: ArrayBuffer; provider: TTSProvider }> {
   if (import.meta.env.DEV) {
     try {
       const buffer = await fetchSynthesizeFromDevApi(request)
-      return { buffer, provider: PROVIDER_RULES[request.useCase] }
+      return { buffer, provider: USE_CASE_PROVIDER[request.useCase] }
     } catch {
-      // fall through to direct keys or throw
+      // fall through
     }
   }
 
@@ -89,28 +99,53 @@ function hasClientTtsKeys(): boolean {
   )
 }
 
+/** Dev proxy veya client VITE_* anahtarları — yoksa tarayıcı EN TTS. */
 export function isCloudTtsConfigured(): boolean {
-  return import.meta.env.DEV || hasClientTtsKeys()
+  return hasClientTtsKeys()
+}
+
+export async function isCloudTtsReachable(): Promise<boolean> {
+  if (hasClientTtsKeys()) {
+    return true
+  }
+  if (!import.meta.env.DEV) {
+    return false
+  }
+  try {
+    const response = await apiFetch('/tts/synthesize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: 'Hi',
+        language: 'en',
+        useCase: 'word_definition',
+      }),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
 }
 
 export async function synthesize(request: TTSRequest): Promise<TTSResponse> {
-  const voice = voiceKey(request)
+  const prepared = prepareTtsRequest(request)
+  const voice = cacheVoiceKey(prepared)
 
-  if (!request.streaming) {
-    const cached = await getCachedAudio(request.text, request.language, voice, request.useCase)
+  if (!prepared.streaming) {
+    const cached = await getCachedAudio(prepared.text, prepared.language, voice, prepared.useCase)
     if (cached) {
       return {
         audioUrl: URL.createObjectURL(new Blob([cached], { type: 'audio/mpeg' })),
-        provider: PROVIDER_RULES[request.useCase],
+        provider: USE_CASE_PROVIDER[prepared.useCase],
         cached: true,
       }
     }
   }
 
-  const { buffer, provider } = await synthesizeBuffer(request)
+  const { buffer, provider } = await synthesizeBuffer(prepared)
 
-  if (!request.streaming) {
-    await setCachedAudio(request.text, request.language, voice, request.useCase, buffer)
+  if (!prepared.streaming) {
+    await setCachedAudio(prepared.text, prepared.language, voice, prepared.useCase, buffer)
   }
 
   return {
@@ -132,3 +167,5 @@ export const tts = {
   uiFeedback: (text: string, language: string) =>
     synthesize({ text, language, useCase: 'ui_feedback' }),
 }
+
+export { prepareTtsRequest, resolveTtsProfile } from './ttsLanguage'

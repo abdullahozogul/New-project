@@ -1,49 +1,46 @@
-import type { TTSRequest } from '../../types/tts'
-import type { TTSProvider, TTSUseCase } from '../../types/tts'
+import type { TTSProvider, TTSRequest } from '../../types/tts'
 import { elevenLabsSynthesize } from './elevenLabsProvider'
 import { openaiTTSSynthesize } from './openaiTTSProvider'
-
-const PROVIDER_RULES: Record<TTSUseCase, TTSProvider> = {
-  listening_content: 'elevenlabs',
-  pronunciation: 'elevenlabs',
-  ui_feedback: 'openai',
-  conversation: 'openai',
-  word_definition: 'openai',
-}
+import { prepareTtsRequest, type PreparedTtsRequest } from './ttsLanguage'
 
 export async function serverSynthesize(
-  request: TTSRequest,
+  request: TTSRequest | PreparedTtsRequest,
   elevenKey: string,
   openaiKey: string,
 ): Promise<{ buffer: ArrayBuffer; provider: TTSProvider }> {
-  const preferred = PROVIDER_RULES[request.useCase]
+  const prepared = 'profile' in request ? request : prepareTtsRequest(request)
 
-  const run = async (provider: TTSProvider) => {
-    if (provider === 'elevenlabs') {
-      return { buffer: await elevenLabsSynthesize(request, elevenKey), provider }
+  const tryEleven = async () => ({
+    buffer: await elevenLabsSynthesize(prepared, elevenKey),
+    provider: 'elevenlabs' as const,
+  })
+  const tryOpenai = async () => ({
+    buffer: await openaiTTSSynthesize(prepared, openaiKey),
+    provider: 'openai' as const,
+  })
+
+  const order =
+    prepared.language === 'en'
+      ? prepared.useCase === 'listening_content' || prepared.useCase === 'pronunciation'
+        ? (['openai', 'elevenlabs'] as const)
+        : (['openai', 'elevenlabs'] as const)
+      : prepared.profile.preferProvider === 'elevenlabs'
+        ? (['elevenlabs', 'openai'] as const)
+        : (['openai', 'elevenlabs'] as const)
+
+  let lastError: unknown
+  for (const provider of order) {
+    try {
+      if (provider === 'elevenlabs' && elevenKey) {
+        return await tryEleven()
+      }
+      if (provider === 'openai' && openaiKey) {
+        return await tryOpenai()
+      }
+    } catch (error) {
+      lastError = error
     }
-    return { buffer: await openaiTTSSynthesize(request, openaiKey), provider }
   }
 
-  try {
-    if (preferred === 'elevenlabs' && elevenKey) {
-      return await run('elevenlabs')
-    }
-    if (openaiKey) {
-      return await run('openai')
-    }
-    if (elevenKey) {
-      return await run('elevenlabs')
-    }
-    throw new Error('tts_no_provider_key')
-  } catch {
-    const fallback: TTSProvider = preferred === 'elevenlabs' ? 'openai' : 'elevenlabs'
-    if (fallback === 'openai' && openaiKey) {
-      return await run('openai')
-    }
-    if (elevenKey) {
-      return await run('elevenlabs')
-    }
-    throw new Error('tts_synthesis_failed')
-  }
+  throw lastError instanceof Error ? lastError : new Error('tts_synthesis_failed')
 }
