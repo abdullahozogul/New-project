@@ -64,6 +64,7 @@ import {
 import { generateCoachReply, isGeminiAiConfigured, offlineCoachFallback, resolveGeminiModel, type CoachTurn } from './lib/gemini'
 import { fetchLiveNewsHeadlines, loadSeenHeadlineIds } from './lib/newsFeed'
 import { getLemonSqueezyPremiumCheckoutUrl } from './lib/lemonSqueezy'
+import { handleExternalLinkClick } from './lib/openExternalLink'
 import { TopBar } from './components/layout/TopBar'
 import { AppSidebar } from './components/layout/AppSidebar'
 import { LearnerSetupStrip } from './components/layout/LearnerSetupStrip'
@@ -824,7 +825,14 @@ function App() {
                   <p className="deck">{selectedArticle.deck}</p>
                   {selectedStoryBundle.sourceUrl ? (
                     <p className="news-source">
-                      <a href={selectedStoryBundle.sourceUrl} target="_blank" rel="noreferrer">
+                      <a
+                        href={selectedStoryBundle.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(event) =>
+                          handleExternalLinkClick(event, selectedStoryBundle.sourceUrl)
+                        }
+                      >
                         Original article
                       </a>
                     </p>
@@ -1456,6 +1464,9 @@ function App() {
                       href={lemonSqueezyCheckoutUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(event) =>
+                        handleExternalLinkClick(event, lemonSqueezyCheckoutUrl)
+                      }
                     >
                       Premium’a geç — Lemon Squeezy
                     </a>

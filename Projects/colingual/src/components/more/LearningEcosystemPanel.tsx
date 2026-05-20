@@ -1,4 +1,5 @@
 import { colingualEcosystemNotes } from '../../config/learningEcosystem'
+import { handleExternalLinkClick } from '../../lib/openExternalLink'
 
 export function LearningEcosystemPanel() {
   return (
@@ -24,11 +25,25 @@ export function LearningEcosystemPanel() {
       </ul>
       <p className="ecosystem-foot">
         Kaynak:{' '}
-        <a href="https://github.com/bj36272/language-learning-apps" target="_blank" rel="noreferrer">
+        <a
+          href="https://github.com/bj36272/language-learning-apps"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) =>
+            handleExternalLinkClick(event, 'https://github.com/bj36272/language-learning-apps')
+          }
+        >
           language-learning-apps
         </a>
         {' · '}
-        <a href="https://github.com/topics/ai-education" target="_blank" rel="noreferrer">
+        <a
+          href="https://github.com/topics/ai-education"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) =>
+            handleExternalLinkClick(event, 'https://github.com/topics/ai-education')
+          }
+        >
           ai-education
         </a>
       </p>

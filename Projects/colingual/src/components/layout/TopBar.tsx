@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, Languages, Moon, Search, Sun } from 'lucide-react'
 import { StreakDisplay } from '../gamification/StreakDisplay'
 import { XPBar } from '../gamification/XPBar'
+import { handleExternalLinkClick } from '../../lib/openExternalLink'
 import './TopBar.css'
 
 const CEFR_LEVELS = new Set(['A1', 'A2', 'B1', 'B2', 'C1'])
@@ -109,6 +110,7 @@ export function TopBar({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="topbar-btn topbar-btn--premium-ls"
+                  onClick={(event) => handleExternalLinkClick(event, premiumCheckoutUrl)}
                 >
                   Premium (Lemon Squeezy)
                 </a>
@@ -133,6 +135,7 @@ export function TopBar({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="topbar-upgrade-pill"
+                    onClick={(event) => handleExternalLinkClick(event, premiumCheckoutUrl)}
                   >
                     <span className="topbar-upgrade-pill__spark" aria-hidden="true">
                       ✦

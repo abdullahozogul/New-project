@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react'
 import type { Level } from '../../data'
 import { generateCourseOutline, type CourseOutlineResult } from '../../lib/aiEducation'
 import { isGeminiAiConfigured } from '../../lib/gemini'
+import { handleExternalLinkClick } from '../../lib/openExternalLink'
 
 type AiCourseOutlinePanelProps = {
   defaultCourseName: string
@@ -49,7 +50,13 @@ export function AiCourseOutlinePanel({
             <a
               href="https://github.com/pramodkoujalagi/Automated-Course-Content-Generator"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
+              onClick={(event) =>
+                handleExternalLinkClick(
+                  event,
+                  'https://github.com/pramodkoujalagi/Automated-Course-Content-Generator',
+                )
+              }
             >
               ACCG
             </a>
