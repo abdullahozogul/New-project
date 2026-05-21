@@ -16,8 +16,12 @@ function voiceKey(request: TTSRequest): string {
   return request.voice ?? request.language
 }
 
-async function fetchSynthesizeFromDevApi(request: TTSRequest): Promise<ArrayBuffer> {
-  const response = await fetch('/api/tts/synthesize', {
+function ttsProxyEndpoint(): string {
+  return import.meta.env.VITE_TTS_ENDPOINT?.trim() || (import.meta.env.DEV ? '/api/tts/synthesize' : '')
+}
+
+async function fetchSynthesizeFromProxy(endpoint: string, request: TTSRequest): Promise<ArrayBuffer> {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -64,17 +68,21 @@ async function synthesizeWithProviders(
 }
 
 async function synthesizeBuffer(request: TTSRequest): Promise<{ buffer: ArrayBuffer; provider: TTSProvider }> {
-  if (import.meta.env.DEV) {
+  const proxyEndpoint = ttsProxyEndpoint()
+  if (proxyEndpoint) {
     try {
-      const buffer = await fetchSynthesizeFromDevApi(request)
+      const buffer = await fetchSynthesizeFromProxy(proxyEndpoint, request)
       return { buffer, provider: PROVIDER_RULES[request.useCase] }
     } catch {
-      // fall through to direct keys or throw
+      if (!import.meta.env.DEV) {
+        throw new Error('tts_proxy_failed')
+      }
+      // In dev only, fall through to direct provider keys for local testing.
     }
   }
 
-  const elevenKey = import.meta.env.VITE_ELEVENLABS_API_KEY ?? ''
-  const openaiKey = import.meta.env.VITE_OPENAI_API_KEY ?? ''
+  const elevenKey = import.meta.env.DEV ? (import.meta.env.VITE_ELEVENLABS_API_KEY ?? '') : ''
+  const openaiKey = import.meta.env.DEV ? (import.meta.env.VITE_OPENAI_API_KEY ?? '') : ''
 
   if (!elevenKey && !openaiKey) {
     throw new Error('tts_not_configured')
@@ -85,12 +93,13 @@ async function synthesizeBuffer(request: TTSRequest): Promise<{ buffer: ArrayBuf
 
 function hasClientTtsKeys(): boolean {
   return Boolean(
-    import.meta.env.VITE_ELEVENLABS_API_KEY || import.meta.env.VITE_OPENAI_API_KEY,
+    import.meta.env.DEV &&
+      (import.meta.env.VITE_ELEVENLABS_API_KEY || import.meta.env.VITE_OPENAI_API_KEY),
   )
 }
 
 export function isCloudTtsConfigured(): boolean {
-  return import.meta.env.DEV || hasClientTtsKeys()
+  return Boolean(ttsProxyEndpoint() || hasClientTtsKeys())
 }
 
 export async function synthesize(request: TTSRequest): Promise<TTSResponse> {

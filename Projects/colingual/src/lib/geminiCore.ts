@@ -15,12 +15,19 @@ function devGeminiProxyEndpoint(): string | null {
   return '/api/gemini/generate'
 }
 
+function assistantProxyEndpoint(): string {
+  return import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() || devGeminiProxyEndpoint() || ''
+}
+
+function devGoogleAiStudioKey(): string {
+  if (!import.meta.env.DEV) {
+    return ''
+  }
+  return import.meta.env.VITE_GEMINI_API_KEY?.trim() || ''
+}
+
 export function isGeminiConfigured(): boolean {
-  return Boolean(
-    import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
-      import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() ||
-      devGeminiProxyEndpoint(),
-  )
+  return Boolean(assistantProxyEndpoint() || devGoogleAiStudioKey())
 }
 
 async function generateViaGoogleAiStudio(
@@ -29,7 +36,7 @@ async function generateViaGoogleAiStudio(
   contents: GeminiContent[],
   generationConfig?: Record<string, unknown>,
 ): Promise<string> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim()
+  const apiKey = devGoogleAiStudioKey()
   if (!apiKey) {
     throw new Error('missing_api_key')
   }
@@ -80,8 +87,7 @@ async function generateViaAssistantProxy(
   contents: GeminiContent[],
   generationConfig?: Record<string, unknown>,
 ): Promise<string> {
-  const endpoint =
-    import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() || devGeminiProxyEndpoint() || ''
+  const endpoint = assistantProxyEndpoint()
   if (!endpoint) {
     throw new Error('missing_proxy')
   }
@@ -142,8 +148,7 @@ export async function generateGeminiContents(
   generationConfig?: Record<string, unknown>,
 ): Promise<string> {
   const model = resolveGeminiModel()
-  const proxyUrl =
-    import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() || devGeminiProxyEndpoint() || ''
+  const proxyUrl = assistantProxyEndpoint()
 
   if (proxyUrl) {
     return generateViaAssistantProxy(model, systemInstruction, contents, generationConfig)
