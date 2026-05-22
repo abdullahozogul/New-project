@@ -99,6 +99,45 @@ import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
 import { VIEW_TITLES } from './config/navigation'
 import { useAppNavigation } from './hooks/useAppNavigation'
 
+const SAVED_WORDS_STORAGE_KEY = 'colingual-saved-words-v1'
+
+const initialSavedWords: VocabularyItem[] = [
+  articles[2].vocabulary[0],
+  articles[2].vocabulary[1],
+]
+
+function isVocabularyItem(value: unknown): value is VocabularyItem {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const item = value as Partial<Record<keyof VocabularyItem, unknown>>
+  return (
+    typeof item.term === 'string' &&
+    typeof item.meaning === 'string' &&
+    typeof item.pronunciation === 'string' &&
+    typeof item.example === 'string'
+  )
+}
+
+function loadSavedWords(): VocabularyItem[] {
+  try {
+    const raw = localStorage.getItem(SAVED_WORDS_STORAGE_KEY)
+    if (!raw) {
+      return initialSavedWords
+    }
+
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) {
+      return initialSavedWords
+    }
+
+    return parsed.filter(isVocabularyItem)
+  } catch {
+    return initialSavedWords
+  }
+}
+
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
@@ -119,10 +158,7 @@ function App() {
     | { state: 'loading'; key: string }
     | { state: 'error'; key: string; reason: 'not_found' | 'unsupported_language' | 'network' }
   >({ state: 'idle' })
-  const [savedWords, setSavedWords] = useState<VocabularyItem[]>([
-    articles[2].vocabulary[0],
-    articles[2].vocabulary[1],
-  ])
+  const [savedWords, setSavedWords] = useState<VocabularyItem[]>(() => loadSavedWords())
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const [chatMessages, setChatMessages] = useState<CoachTurn[]>([
@@ -225,6 +261,10 @@ function App() {
   }, [markActiveToday])
 
   useEffect(() => {
+    localStorage.setItem(SAVED_WORDS_STORAGE_KEY, JSON.stringify(savedWords))
+  }, [savedWords])
+
+  useEffect(() => {
     setStoreCefrLevel(levelFromAppLevel(level))
   }, [level, setStoreCefrLevel])
 
@@ -236,7 +276,7 @@ function App() {
 
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
-      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      setNewsError('Add AI_ASSISTANT_API_KEY for local dev or VITE_AI_ASSISTANT_ENDPOINT in production to fetch live news.')
       return
     }
 
@@ -968,6 +1008,7 @@ function App() {
 
         <div className="view-pane content-grid--practice" data-view-pane="practice">
           <SkillsWorkbench
+            key={currentStoryKey}
             article={selectedArticle}
             appLevel={effectiveLevel}
             locale={targetLanguageOption?.locale}

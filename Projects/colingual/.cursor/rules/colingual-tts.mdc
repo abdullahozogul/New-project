@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Colingual — TTS (plan)
 
-**Durum:** `src/services/tts/` + `useTTS` + `TTSPlayer` + dev proxy `/api/tts/synthesize`. API anahtarı yoksa **Web Speech API** yedek (`AudioPlayer`, `speakArticle`).
+**Durum:** `src/services/tts/` + `useTTS` + `TTSPlayer` + dev proxy `/api/tts/synthesize`. Prod için `VITE_TTS_ENDPOINT`; API anahtarı yoksa **Web Speech API** yedek (`AudioPlayer`, `speakArticle`).
 
 ## Provider stratejisi
 
@@ -44,9 +44,9 @@ const SPEED_BY_CEFR: Record<CEFRLevel, number> = {
 ## Env (dev)
 
 ```
-VITE_ELEVENLABS_API_KEY=
-VITE_OPENAI_API_KEY=
-# veya mevcut VITE_GEMINI_API_KEY / backend proxy — prod'da client'a gömme
+ELEVENLABS_API_KEY=
+OPENAI_API_KEY=
+# Prod: provider anahtarlarını backend'de tut, client sadece VITE_TTS_ENDPOINT kullansın.
 ```
 
 ## Entegrasyon noktaları
