@@ -46,17 +46,17 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_NEWS_SOURCE_ENDPOINT=
 # Chat coach: uses Google Gemini **gemini-2.5-flash** by default.
-# Option A — browser key (dev only; prefer Option B in production):
-VITE_GEMINI_API_KEY=
 # Optional override of model id (default: gemini-2.5-flash)
 VITE_GEMINI_MODEL=
-# Option B — your backend POST endpoint; request body includes `model`, `systemInstruction`, `contents`
+# Production backend POST endpoint; request body includes `model`, `systemInstruction`, `contents`
 VITE_AI_ASSISTANT_ENDPOINT=
+# Production backend POST endpoint for TTS synthesis.
 VITE_TTS_ENDPOINT=
 SUPABASE_SERVICE_ROLE_KEY=
 NEWS_SOURCE_API_KEY=
 AI_ASSISTANT_API_KEY=
-TTS_API_KEY=
+ELEVENLABS_API_KEY=
+OPENAI_API_KEY=
 ```
 
-Only variables prefixed with `VITE_` are exposed to browser code. For production, call Gemini from a server or edge function and point `VITE_AI_ASSISTANT_ENDPOINT` at it; keep API keys out of the client bundle.
+Only variables prefixed with `VITE_` are exposed to browser code. Keep provider API keys server-side; for local development the Vite middleware reads server-only keys from `.env.local`, and production should point the `VITE_*_ENDPOINT` variables at backend or edge functions.
