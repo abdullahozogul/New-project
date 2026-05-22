@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Article } from '../../data'
 import type { GrammarIssue, SpeakingEvaluationResponse, WritingFeedbackResponse } from '../../types'
 import { levelFromAppLevel } from '../../utils/cefrUtils'
@@ -63,10 +63,6 @@ export function SkillsWorkbench({
   const recordSession = useProgressStore((state) => state.recordSession)
 
   const transcript = useMemo(() => article.paragraphs.join(' '), [article.paragraphs])
-
-  useEffect(() => {
-    setNotes(loadNotes(storyKey))
-  }, [storyKey])
 
   const addNote = (quote: string, note: string) => {
     const next: ReadingNote = {
