@@ -44,9 +44,10 @@ const SPEED_BY_CEFR: Record<CEFRLevel, number> = {
 ## Env (dev)
 
 ```
-VITE_ELEVENLABS_API_KEY=
-VITE_OPENAI_API_KEY=
-# veya mevcut VITE_GEMINI_API_KEY / backend proxy — prod'da client'a gömme
+VITE_TTS_ENDPOINT=
+ELEVENLABS_API_KEY=
+OPENAI_API_KEY=
+# Provider anahtarlarını VITE_ prefix'iyle tanımlama; Vite bunları client bundle'a gömer.
 ```
 
 ## Entegrasyon noktaları
@@ -60,6 +61,6 @@ VITE_OPENAI_API_KEY=
 1. Aynı metin+ses için **IndexedDB cache** (`ttsCache.ts`)
 2. Provider fail → diğer provider fallback
 3. `URL.revokeObjectURL` ile blob sızıntısını önle (`useTTS`)
-4. Prod: TTS anahtarları **backend proxy** üzerinden
+4. Prod: TTS anahtarları **backend proxy** üzerinden; browser yalnızca `VITE_TTS_ENDPOINT` çağırır
 
 Tam referans implementasyon: kullanıcının orijinal `cursorrules` Bölüm 5 (Downloads).
