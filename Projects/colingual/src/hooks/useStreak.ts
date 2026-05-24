@@ -90,7 +90,7 @@ export function useStreak() {
     return streak
   }, [])
 
-  const useFreeze = useCallback(() => {
+  const applyFreeze = useCallback(() => {
     const stored = loadStreak()
     if (stored.freezesLeft <= 0) {
       return false
@@ -111,7 +111,7 @@ export function useStreak() {
     streak: snapshot.streak,
     freezesLeft: snapshot.freezesLeft,
     markActiveToday,
-    useFreeze,
+    applyFreeze,
     atRisk,
     milestones: [7, 30, 100, 365] as const,
   }
