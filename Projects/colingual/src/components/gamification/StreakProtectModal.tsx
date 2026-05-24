@@ -7,7 +7,7 @@ type StreakProtectModalProps = {
 }
 
 export function StreakProtectModal({ open, onClose }: StreakProtectModalProps) {
-  const { streak, freezesLeft, useFreeze, atRisk } = useStreak()
+  const { streak, freezesLeft, markActiveToday, useFreeze, atRisk } = useStreak()
 
   if (!open || !atRisk) {
     return null
@@ -33,7 +33,13 @@ export function StreakProtectModal({ open, onClose }: StreakProtectModalProps) {
           >
             Seriyi dondur
           </button>
-          <button type="button" onClick={onClose}>
+          <button
+            type="button"
+            onClick={() => {
+              markActiveToday()
+              onClose()
+            }}
+          >
             Pratiğe git
           </button>
         </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import {
   BookMarked,
@@ -99,6 +99,37 @@ import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
 import { VIEW_TITLES } from './config/navigation'
 import { useAppNavigation } from './hooks/useAppNavigation'
 
+const SAVED_WORDS_STORAGE_PREFIX = 'colingual-saved-words-v1'
+
+function seedSavedWords(): VocabularyItem[] {
+  return [articles[2].vocabulary[0], articles[2].vocabulary[1]]
+}
+
+function savedWordsStorageKey(userId: string | null): string {
+  return `${SAVED_WORDS_STORAGE_PREFIX}:${userId ?? 'guest'}`
+}
+
+function loadSavedWords(storageKey: string): VocabularyItem[] {
+  try {
+    const raw = localStorage.getItem(storageKey)
+    if (!raw) {
+      return seedSavedWords()
+    }
+    const parsed = JSON.parse(raw) as VocabularyItem[]
+    return Array.isArray(parsed) ? parsed : seedSavedWords()
+  } catch {
+    return seedSavedWords()
+  }
+}
+
+function saveSavedWords(storageKey: string, words: VocabularyItem[]) {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(words))
+  } catch {
+    // Ignore quota/private-mode failures; the in-memory list remains usable.
+  }
+}
+
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
@@ -119,10 +150,11 @@ function App() {
     | { state: 'loading'; key: string }
     | { state: 'error'; key: string; reason: 'not_found' | 'unsupported_language' | 'network' }
   >({ state: 'idle' })
-  const [savedWords, setSavedWords] = useState<VocabularyItem[]>([
-    articles[2].vocabulary[0],
-    articles[2].vocabulary[1],
-  ])
+  const initialSavedWordsStorageKey = savedWordsStorageKey(null)
+  const [savedWords, setSavedWords] = useState<VocabularyItem[]>(() =>
+    loadSavedWords(initialSavedWordsStorageKey),
+  )
+  const skipNextSavedWordsSave = useRef(false)
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const [chatMessages, setChatMessages] = useState<CoachTurn[]>([
@@ -221,7 +253,7 @@ function App() {
   }, [progressSignals, syncFromSignals])
 
   useEffect(() => {
-    markActiveToday()
+    markActiveToday({ preserveAtRisk: true })
   }, [markActiveToday])
 
   useEffect(() => {
@@ -288,6 +320,20 @@ function App() {
   }, [])
 
   const lemonSqueezyCheckoutUrl = useMemo(() => getLemonSqueezyPremiumCheckoutUrl(), [])
+  const currentSavedWordsStorageKey = useMemo(() => savedWordsStorageKey(user?.id ?? null), [user?.id])
+
+  useEffect(() => {
+    skipNextSavedWordsSave.current = true
+    setSavedWords(loadSavedWords(currentSavedWordsStorageKey))
+  }, [currentSavedWordsStorageKey])
+
+  useEffect(() => {
+    if (skipNextSavedWordsSave.current) {
+      skipNextSavedWordsSave.current = false
+      return
+    }
+    saveSavedWords(currentSavedWordsStorageKey, savedWords)
+  }, [currentSavedWordsStorageKey, savedWords])
 
   const vocabularyLookup = useMemo(() => {
     const entries = new Map<string, VocabularyItem>()
@@ -456,23 +502,24 @@ function App() {
 
   const toggleWord = (word: VocabularyItem) => {
     const termKey = word.term.toLowerCase()
+    const alreadySaved = savedTerms.has(termKey)
 
-    setSavedWords((current) => {
-      const alreadySaved = current.some((item) => item.term.toLowerCase() === termKey)
-      if (alreadySaved) {
-        return current.filter((item) => item.term.toLowerCase() !== termKey)
-      }
+    if (alreadySaved) {
+      setSavedWords((current) => current.filter((item) => item.term.toLowerCase() !== termKey))
+      return
+    }
 
-      recordSession('writing', 75)
-      addSrsCard({
-        id: `sw-${word.term}-${Date.now()}`,
-        skill: 'reading',
-        cefrLevel: levelFromAppLevel(level),
-        front: word.term,
-        back: word.meaning,
-      })
-      return [word, ...current]
+    recordSession('writing', 75)
+    addSrsCard({
+      id: `sw-${word.term}-${Date.now()}`,
+      skill: 'reading',
+      cefrLevel: levelFromAppLevel(level),
+      front: word.term,
+      back: word.meaning,
     })
+    setSavedWords((current) =>
+      current.some((item) => item.term.toLowerCase() === termKey) ? current : [word, ...current],
+    )
   }
 
   const handleLevelChange = (candidate: Level) => {

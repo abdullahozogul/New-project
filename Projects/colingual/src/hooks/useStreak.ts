@@ -9,6 +9,10 @@ type StreakSnapshot = {
   freezesLeft: number
 }
 
+type MarkActiveTodayOptions = {
+  preserveAtRisk?: boolean
+}
+
 function loadStreak(): StreakSnapshot {
   try {
     const raw = localStorage.getItem(STREAK_KEY)
@@ -35,6 +39,20 @@ function yesterdayKey(): string {
   return utcDateKey(date)
 }
 
+function isStreakAtRisk(snapshot: StreakSnapshot): boolean {
+  return (
+    snapshot.lastActiveDate !== utcDateKey() &&
+    snapshot.lastActiveDate !== yesterdayKey() &&
+    snapshot.streak > 0
+  )
+}
+
+function syncProgressStreak(streak: number) {
+  useProgressStore.setState((state) => ({
+    progress: { ...state.progress, streak },
+  }))
+}
+
 export function useStreak() {
   const progress = useProgressStore((state) => state.progress)
 
@@ -46,10 +64,13 @@ export function useStreak() {
     return stored
   }, [progress.streak])
 
-  const markActiveToday = useCallback(() => {
+  const markActiveToday = useCallback((options: MarkActiveTodayOptions = {}) => {
     const today = utcDateKey()
     const stored = loadStreak()
     if (stored.lastActiveDate === today) {
+      return stored.streak
+    }
+    if (options.preserveAtRisk && isStreakAtRisk(stored)) {
       return stored.streak
     }
 
@@ -64,9 +85,7 @@ export function useStreak() {
 
     const next = { ...stored, streak, lastActiveDate: today }
     saveStreak(next)
-    useProgressStore.setState((state) => ({
-      progress: { ...state.progress, streak },
-    }))
+    syncProgressStreak(streak)
     useProgressStore.getState().addXp({ type: 'streakBonus', streak })
     return streak
   }, [])
@@ -76,18 +95,17 @@ export function useStreak() {
     if (stored.freezesLeft <= 0) {
       return false
     }
-    saveStreak({
+    const next = {
       ...stored,
       freezesLeft: stored.freezesLeft - 1,
       lastActiveDate: utcDateKey(),
-    })
+    }
+    saveStreak(next)
+    syncProgressStreak(next.streak)
     return true
   }, [])
 
-  const atRisk =
-    snapshot.lastActiveDate !== utcDateKey() &&
-    snapshot.lastActiveDate !== yesterdayKey() &&
-    snapshot.streak > 0
+  const atRisk = isStreakAtRisk(snapshot)
 
   return {
     streak: snapshot.streak,
