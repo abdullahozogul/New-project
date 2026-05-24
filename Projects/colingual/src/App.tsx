@@ -99,6 +99,37 @@ import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
 import { VIEW_TITLES } from './config/navigation'
 import { useAppNavigation } from './hooks/useAppNavigation'
 
+const SAVED_WORDS_STORAGE_KEY = 'colingual-saved-words-v1'
+
+function seedSavedWords(): VocabularyItem[] {
+  return [articles[2].vocabulary[0], articles[2].vocabulary[1]]
+}
+
+function loadSavedWords(): VocabularyItem[] {
+  try {
+    const raw = localStorage.getItem(SAVED_WORDS_STORAGE_KEY)
+    if (!raw) {
+      return seedSavedWords()
+    }
+    const parsed = JSON.parse(raw) as VocabularyItem[]
+    return Array.isArray(parsed) ? parsed : seedSavedWords()
+  } catch {
+    return seedSavedWords()
+  }
+}
+
+function saveSavedWords(words: VocabularyItem[]) {
+  try {
+    localStorage.setItem(SAVED_WORDS_STORAGE_KEY, JSON.stringify(words))
+  } catch {
+    // Ignore quota/private-mode failures; the in-memory list remains usable.
+  }
+}
+
+function srsCardId(prefix: string, term: string): string {
+  return `${prefix}-${term}-${Date.now()}`
+}
+
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
@@ -119,10 +150,9 @@ function App() {
     | { state: 'loading'; key: string }
     | { state: 'error'; key: string; reason: 'not_found' | 'unsupported_language' | 'network' }
   >({ state: 'idle' })
-  const [savedWords, setSavedWords] = useState<VocabularyItem[]>([
-    articles[2].vocabulary[0],
-    articles[2].vocabulary[1],
-  ])
+  const [savedWords, setSavedWords] = useState<VocabularyItem[]>(() =>
+    loadSavedWords(),
+  )
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const [chatMessages, setChatMessages] = useState<CoachTurn[]>([
@@ -221,7 +251,7 @@ function App() {
   }, [progressSignals, syncFromSignals])
 
   useEffect(() => {
-    markActiveToday()
+    markActiveToday({ preserveAtRisk: true })
   }, [markActiveToday])
 
   useEffect(() => {
@@ -288,6 +318,10 @@ function App() {
   }, [])
 
   const lemonSqueezyCheckoutUrl = useMemo(() => getLemonSqueezyPremiumCheckoutUrl(), [])
+
+  useEffect(() => {
+    saveSavedWords(savedWords)
+  }, [savedWords])
 
   const vocabularyLookup = useMemo(() => {
     const entries = new Map<string, VocabularyItem>()
@@ -456,23 +490,24 @@ function App() {
 
   const toggleWord = (word: VocabularyItem) => {
     const termKey = word.term.toLowerCase()
+    const alreadySaved = savedTerms.has(termKey)
 
-    setSavedWords((current) => {
-      const alreadySaved = current.some((item) => item.term.toLowerCase() === termKey)
-      if (alreadySaved) {
-        return current.filter((item) => item.term.toLowerCase() !== termKey)
-      }
+    if (alreadySaved) {
+      setSavedWords((current) => current.filter((item) => item.term.toLowerCase() !== termKey))
+      return
+    }
 
-      recordSession('writing', 75)
-      addSrsCard({
-        id: `sw-${word.term}-${Date.now()}`,
-        skill: 'reading',
-        cefrLevel: levelFromAppLevel(level),
-        front: word.term,
-        back: word.meaning,
-      })
-      return [word, ...current]
+    recordSession('writing', 75)
+    addSrsCard({
+      id: srsCardId('sw', word.term),
+      skill: 'reading',
+      cefrLevel: levelFromAppLevel(level),
+      front: word.term,
+      back: word.meaning,
     })
+    setSavedWords((current) =>
+      current.some((item) => item.term.toLowerCase() === termKey) ? current : [word, ...current],
+    )
   }
 
   const handleLevelChange = (candidate: Level) => {
@@ -968,6 +1003,7 @@ function App() {
 
         <div className="view-pane content-grid--practice" data-view-pane="practice">
           <SkillsWorkbench
+            key={currentStoryKey}
             article={selectedArticle}
             appLevel={effectiveLevel}
             locale={targetLanguageOption?.locale}

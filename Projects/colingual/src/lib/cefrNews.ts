@@ -96,6 +96,41 @@ function estimateMinutes(paragraphs: string[]): number {
   return Math.max(3, Math.min(12, Math.round(words / 130)))
 }
 
+function trimmedText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function normalizeTextList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(trimmedText).filter(Boolean) : []
+}
+
+function normalizeVocabulary(value: unknown): VocabularyItem[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const candidate = item as Record<string, unknown>
+      const term = trimmedText(candidate.term)
+      const meaning = trimmedText(candidate.meaning)
+      if (!term || !meaning) {
+        return null
+      }
+      return {
+        term,
+        meaning,
+        pronunciation: trimmedText(candidate.pronunciation) || term,
+        example: trimmedText(candidate.example) || `${term}: ${meaning}`,
+      }
+    })
+    .filter((item): item is VocabularyItem => Boolean(item))
+    .slice(0, 5)
+}
+
 export function articleFromBundle(bundle: NewsStoryBundle, level: Level): Article | null {
   const variant = bundle.variants[level]
   if (!variant) {
@@ -299,25 +334,22 @@ export async function buildCefrNewsBundle(
 
   for (const level of levels) {
     const raw = parsed.variants?.[level]
-    if (!raw?.title || !raw.paragraphs?.length) {
+    const title = trimmedText(raw?.title)
+    const paragraphs = normalizeTextList(raw?.paragraphs)
+    if (!title || paragraphs.length === 0) {
       continue
     }
 
     variants[level] = {
-      title: raw.title.trim(),
-      deck: raw.deck?.trim() || `Level ${level} version of today's story.`,
-      minutes: raw.minutes ?? estimateMinutes(raw.paragraphs),
-      listening: raw.listening?.trim() || defaultListening(level),
-      video: raw.video?.trim() || defaultVideo(category),
-      paragraphs: raw.paragraphs.map((p) => p.trim()).filter(Boolean),
-      vocabulary: (raw.vocabulary ?? []).slice(0, 5).map((item) => ({
-        term: item.term.trim(),
-        meaning: item.meaning.trim(),
-        pronunciation: item.pronunciation.trim(),
-        example: item.example.trim(),
-      })),
-      readingPurpose: raw.readingPurpose?.trim() || undefined,
-      grammarUsed: (raw.grammarUsed ?? []).map((item) => item.trim()).filter(Boolean).slice(0, 10),
+      title,
+      deck: trimmedText(raw?.deck) || `Level ${level} version of today's story.`,
+      minutes: typeof raw?.minutes === 'number' ? raw.minutes : estimateMinutes(paragraphs),
+      listening: trimmedText(raw?.listening) || defaultListening(level),
+      video: trimmedText(raw?.video) || defaultVideo(category),
+      paragraphs,
+      vocabulary: normalizeVocabulary(raw?.vocabulary),
+      readingPurpose: trimmedText(raw?.readingPurpose) || undefined,
+      grammarUsed: normalizeTextList(raw?.grammarUsed).slice(0, 10),
     }
   }
 
