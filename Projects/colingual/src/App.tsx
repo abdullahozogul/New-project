@@ -996,6 +996,7 @@ function App() {
 
         <div className="view-pane content-grid--practice" data-view-pane="practice">
           <SkillsWorkbench
+            key={currentStoryKey}
             article={selectedArticle}
             appLevel={effectiveLevel}
             locale={targetLanguageOption?.locale}
