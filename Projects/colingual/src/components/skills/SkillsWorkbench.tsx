@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Article } from '../../data'
 import type { GrammarIssue, SpeakingEvaluationResponse, WritingFeedbackResponse } from '../../types'
 import { levelFromAppLevel } from '../../utils/cefrUtils'
@@ -39,7 +39,11 @@ function loadNotes(storyKey: string): ReadingNote[] {
 }
 
 function saveNotes(storyKey: string, notes: ReadingNote[]) {
-  localStorage.setItem(`colingual-notes-${storyKey}`, JSON.stringify(notes))
+  try {
+    localStorage.setItem(`colingual-notes-${storyKey}`, JSON.stringify(notes))
+  } catch {
+    // Keep note editing usable even when browser storage is unavailable.
+  }
 }
 
 export function SkillsWorkbench({
@@ -64,6 +68,10 @@ export function SkillsWorkbench({
 
   const transcript = useMemo(() => article.paragraphs.join(' '), [article.paragraphs])
 
+  useEffect(() => {
+    setNotes(loadNotes(storyKey))
+  }, [storyKey])
+
   const addNote = (quote: string, note: string) => {
     const next: ReadingNote = {
       id: `n-${Date.now()}`,
@@ -71,16 +79,20 @@ export function SkillsWorkbench({
       note,
       createdAt: new Date().toISOString(),
     }
-    const merged = [next, ...notes]
-    setNotes(merged)
-    saveNotes(storyKey, merged)
+    setNotes((current) => {
+      const merged = [next, ...current]
+      saveNotes(storyKey, merged)
+      return merged
+    })
     recordSession('reading')
   }
 
   const removeNote = (id: string) => {
-    const merged = notes.filter((item) => item.id !== id)
-    setNotes(merged)
-    saveNotes(storyKey, merged)
+    setNotes((current) => {
+      const merged = current.filter((item) => item.id !== id)
+      saveNotes(storyKey, merged)
+      return merged
+    })
   }
 
   const reviewWriting = async (text: string) => {
