@@ -44,9 +44,10 @@ const SPEED_BY_CEFR: Record<CEFRLevel, number> = {
 ## Env (dev)
 
 ```
-VITE_ELEVENLABS_API_KEY=
-VITE_OPENAI_API_KEY=
-# veya mevcut VITE_GEMINI_API_KEY / backend proxy — prod'da client'a gömme
+ELEVENLABS_API_KEY=
+OPENAI_API_KEY=
+VITE_TTS_ENDPOINT=
+# provider anahtarlarını client'a gömme; prod'da backend proxy kullan
 ```
 
 ## Entegrasyon noktaları
