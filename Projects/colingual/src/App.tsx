@@ -99,6 +99,57 @@ import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
 import { VIEW_TITLES } from './config/navigation'
 import { useAppNavigation } from './hooks/useAppNavigation'
 
+const SAVED_WORDS_STORAGE_KEY = 'colingual-saved-words-v1'
+const DEFAULT_SAVED_WORDS = [articles[2].vocabulary[0], articles[2].vocabulary[1]]
+
+function isVocabularyItem(value: unknown): value is VocabularyItem {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<Record<keyof VocabularyItem, unknown>>
+  return (
+    typeof candidate.term === 'string' &&
+    typeof candidate.meaning === 'string' &&
+    typeof candidate.pronunciation === 'string' &&
+    typeof candidate.example === 'string'
+  )
+}
+
+function loadSavedWords(): VocabularyItem[] {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SAVED_WORDS
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SAVED_WORDS_STORAGE_KEY)
+    if (!raw) {
+      return DEFAULT_SAVED_WORDS
+    }
+
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) {
+      return DEFAULT_SAVED_WORDS
+    }
+
+    return parsed.filter(isVocabularyItem)
+  } catch {
+    return DEFAULT_SAVED_WORDS
+  }
+}
+
+function saveSavedWords(words: VocabularyItem[]) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(SAVED_WORDS_STORAGE_KEY, JSON.stringify(words))
+  } catch {
+    // Storage may be unavailable in private mode; keep the in-memory list usable.
+  }
+}
+
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
@@ -119,10 +170,7 @@ function App() {
     | { state: 'loading'; key: string }
     | { state: 'error'; key: string; reason: 'not_found' | 'unsupported_language' | 'network' }
   >({ state: 'idle' })
-  const [savedWords, setSavedWords] = useState<VocabularyItem[]>([
-    articles[2].vocabulary[0],
-    articles[2].vocabulary[1],
-  ])
+  const [savedWords, setSavedWords] = useState<VocabularyItem[]>(() => loadSavedWords())
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const [chatMessages, setChatMessages] = useState<CoachTurn[]>([
@@ -221,6 +269,10 @@ function App() {
   }, [progressSignals, syncFromSignals])
 
   useEffect(() => {
+    saveSavedWords(savedWords)
+  }, [savedWords])
+
+  useEffect(() => {
     markActiveToday()
   }, [markActiveToday])
 
@@ -236,7 +288,7 @@ function App() {
 
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
-      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      setNewsError('Add VITE_AI_ASSISTANT_ENDPOINT or run the dev proxy with AI_ASSISTANT_API_KEY to fetch live news.')
       return
     }
 
@@ -457,21 +509,23 @@ function App() {
   const toggleWord = (word: VocabularyItem) => {
     const termKey = word.term.toLowerCase()
 
+    if (savedTerms.has(termKey)) {
+      setSavedWords((current) => current.filter((item) => item.term.toLowerCase() !== termKey))
+      return
+    }
+
+    recordSession('writing', 75)
+    addSrsCard({
+      id: `sw-${word.term}-${Date.now()}`,
+      skill: 'reading',
+      cefrLevel: levelFromAppLevel(level),
+      front: word.term,
+      back: word.meaning,
+    })
+
     setSavedWords((current) => {
       const alreadySaved = current.some((item) => item.term.toLowerCase() === termKey)
-      if (alreadySaved) {
-        return current.filter((item) => item.term.toLowerCase() !== termKey)
-      }
-
-      recordSession('writing', 75)
-      addSrsCard({
-        id: `sw-${word.term}-${Date.now()}`,
-        skill: 'reading',
-        cefrLevel: levelFromAppLevel(level),
-        front: word.term,
-        back: word.meaning,
-      })
-      return [word, ...current]
+      return alreadySaved ? current : [word, ...current]
     })
   }
 
