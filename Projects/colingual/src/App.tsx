@@ -516,7 +516,7 @@ function App() {
 
     recordSession('writing', 75)
     addSrsCard({
-      id: `sw-${word.term}-${Date.now()}`,
+      id: `sw-${termKey}`,
       skill: 'reading',
       cefrLevel: levelFromAppLevel(level),
       front: word.term,

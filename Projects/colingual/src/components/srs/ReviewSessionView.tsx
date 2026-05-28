@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSRSStore } from '../../stores/useSRSStore'
 import { useProgressStore } from '../../stores/useProgressStore'
 import { cardsDueForReview, type SRSRating } from '../../services/srsEngine'
@@ -15,23 +15,19 @@ export function ReviewSessionView() {
   const [flipped, setFlipped] = useState(false)
   const [correct, setCorrect] = useState(0)
 
-  useEffect(() => {
-    if (sessionCardIds.length === 0 && dueCards.length > 0) {
-      setSessionCardIds(dueCards.map((dueCard) => dueCard.id))
-      setIndex(0)
-      setFlipped(false)
-      setCorrect(0)
-    }
-  }, [dueCards, sessionCardIds.length])
+  const activeSessionCardIds = useMemo(
+    () => (sessionCardIds.length > 0 ? sessionCardIds : dueCards.map((dueCard) => dueCard.id)),
+    [dueCards, sessionCardIds],
+  )
 
   const cardsById = useMemo(() => new Map(cards.map((storedCard) => [storedCard.id, storedCard])), [cards])
   const sessionCards = useMemo(
     () =>
-      sessionCardIds.flatMap((cardId) => {
+      activeSessionCardIds.flatMap((cardId) => {
         const storedCard = cardsById.get(cardId)
         return storedCard ? [storedCard] : []
       }),
-    [cardsById, sessionCardIds],
+    [activeSessionCardIds, cardsById],
   )
 
   const totalCards = sessionCards.length
@@ -67,6 +63,9 @@ export function ReviewSessionView() {
       setIndex(0)
       setCorrect(0)
     } else {
+      if (sessionCardIds.length === 0) {
+        setSessionCardIds(activeSessionCardIds)
+      }
       setIndex((value) => value + 1)
     }
   }

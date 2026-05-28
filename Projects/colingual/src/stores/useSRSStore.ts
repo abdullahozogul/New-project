@@ -20,7 +20,10 @@ export const useSRSStore = create<SRSState>()(
 
       addCard: (partial) => {
         set((state) => ({
-          cards: [...state.cards, createCard(partial)],
+          cards:
+            state.cards.some((card) => card.id === partial.id) ?
+              state.cards
+            : [...state.cards, createCard(partial)],
         }))
       },
 
