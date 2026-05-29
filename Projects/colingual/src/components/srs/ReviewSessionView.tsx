@@ -45,7 +45,7 @@ export function ReviewSessionView() {
       setIndex(0)
       setCorrect(0)
     } else {
-      setIndex((value) => value + 1)
+      setIndex(0)
     }
   }
 
