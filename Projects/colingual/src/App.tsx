@@ -99,6 +99,112 @@ import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
 import { VIEW_TITLES } from './config/navigation'
 import { useAppNavigation } from './hooks/useAppNavigation'
 
+const SAVED_WORDS_KEY = 'colingual-saved-words-v1'
+const LIVE_BUNDLES_KEY = 'colingual-live-bundles-v1'
+const MAX_LIVE_BUNDLES = 8
+const DEFAULT_SAVED_WORDS: VocabularyItem[] = [
+  articles[2].vocabulary[0],
+  articles[2].vocabulary[1],
+]
+
+function isVocabularyItem(value: unknown): value is VocabularyItem {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const item = value as Partial<Record<keyof VocabularyItem, unknown>>
+  return (
+    typeof item.term === 'string' &&
+    typeof item.meaning === 'string' &&
+    typeof item.pronunciation === 'string' &&
+    typeof item.example === 'string'
+  )
+}
+
+function loadSavedWords(): VocabularyItem[] {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SAVED_WORDS
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SAVED_WORDS_KEY)
+    if (!raw) {
+      return DEFAULT_SAVED_WORDS
+    }
+
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) {
+      return DEFAULT_SAVED_WORDS
+    }
+
+    return parsed.filter(isVocabularyItem)
+  } catch {
+    return DEFAULT_SAVED_WORDS
+  }
+}
+
+function saveSavedWords(words: VocabularyItem[]): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(SAVED_WORDS_KEY, JSON.stringify(words))
+  } catch {
+    // Ignore quota/privacy errors; SRS cards are persisted separately.
+  }
+}
+
+function isNewsStoryBundle(value: unknown): value is NewsStoryBundle {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const bundle = value as Partial<NewsStoryBundle>
+  return (
+    typeof bundle.storyId === 'string' &&
+    typeof bundle.sourceTitle === 'string' &&
+    typeof bundle.category === 'string' &&
+    typeof bundle.fetchedAt === 'number' &&
+    typeof bundle.imageTone === 'string' &&
+    Boolean(bundle.variants) &&
+    typeof bundle.variants === 'object'
+  )
+}
+
+function loadLiveBundles(): NewsStoryBundle[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  try {
+    const raw = window.localStorage.getItem(LIVE_BUNDLES_KEY)
+    if (!raw) {
+      return []
+    }
+
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? parsed.filter(isNewsStoryBundle).slice(0, MAX_LIVE_BUNDLES) : []
+  } catch {
+    return []
+  }
+}
+
+function saveLiveBundles(bundles: NewsStoryBundle[]): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      LIVE_BUNDLES_KEY,
+      JSON.stringify(bundles.slice(0, MAX_LIVE_BUNDLES)),
+    )
+  } catch {
+    // Keep the current session usable if cached live stories exceed storage quota.
+  }
+}
+
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
@@ -106,7 +212,7 @@ function App() {
   const [goal, setGoal] = useState(learningGoals[0])
   const [user, setUser] = useState<User | null>(null)
   const [selectedStoryKey, setSelectedStoryKey] = useState('city-garden')
-  const [liveBundles, setLiveBundles] = useState<NewsStoryBundle[]>([])
+  const [liveBundles, setLiveBundles] = useState<NewsStoryBundle[]>(() => loadLiveBundles())
   const [shelfItems, setShelfItems] = useState<ShelfItem[]>(() => loadShelf())
   const [coachUsed, setCoachUsed] = useState(() => loadCoachUsed())
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
@@ -119,10 +225,7 @@ function App() {
     | { state: 'loading'; key: string }
     | { state: 'error'; key: string; reason: 'not_found' | 'unsupported_language' | 'network' }
   >({ state: 'idle' })
-  const [savedWords, setSavedWords] = useState<VocabularyItem[]>([
-    articles[2].vocabulary[0],
-    articles[2].vocabulary[1],
-  ])
+  const [savedWords, setSavedWords] = useState<VocabularyItem[]>(() => loadSavedWords())
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const [chatMessages, setChatMessages] = useState<CoachTurn[]>([
@@ -229,6 +332,14 @@ function App() {
   }, [level, setStoreCefrLevel])
 
   useEffect(() => {
+    saveSavedWords(savedWords)
+  }, [savedWords])
+
+  useEffect(() => {
+    saveLiveBundles(liveBundles)
+  }, [liveBundles])
+
+  useEffect(() => {
     if (streakAtRisk) {
       setStreakModalOpen(true)
     }
@@ -236,7 +347,7 @@ function App() {
 
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
-      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      setNewsError('Add VITE_AI_ASSISTANT_ENDPOINT or a local AI_ASSISTANT_API_KEY to fetch live news.')
       return
     }
 
@@ -264,7 +375,12 @@ function App() {
         nativeLanguageLabel: nativeLanguageOption?.label ?? nativeLanguage,
       })
 
-      setLiveBundles((current) => [bundle, ...current.filter((item) => item.storyId !== bundle.storyId)])
+      setLiveBundles((current) =>
+        [bundle, ...current.filter((item) => item.storyId !== bundle.storyId)].slice(
+          0,
+          MAX_LIVE_BUNDLES,
+        ),
+      )
       setSelectedStoryKey(bundle.storyId)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'news_failed'
