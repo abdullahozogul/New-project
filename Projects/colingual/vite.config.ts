@@ -139,7 +139,7 @@ function geminiDevProxyPlugin(env: Record<string, string>): Plugin {
           return
         }
 
-        const apiKey = env.AI_ASSISTANT_API_KEY?.trim() || env.VITE_GEMINI_API_KEY?.trim()
+        const apiKey = env.AI_ASSISTANT_API_KEY?.trim() || env.GEMINI_API_KEY?.trim()
         if (!apiKey) {
           res.statusCode = 503
           res.end(JSON.stringify({ error: 'missing_gemini_key' }))
@@ -148,13 +148,12 @@ function geminiDevProxyPlugin(env: Record<string, string>): Plugin {
 
         try {
           const body = (await readJsonBody(req)) as {
-            model?: string
             systemInstruction?: { parts?: { text?: string }[] }
             contents?: { role?: string; parts?: { text?: string }[] }[]
             generationConfig?: Record<string, unknown>
           }
 
-          const model = body.model?.trim() || env.VITE_GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+          const model = env.GEMINI_MODEL?.trim() || env.VITE_GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
             model,
           )}:generateContent?key=${encodeURIComponent(apiKey)}`
@@ -305,8 +304,8 @@ function ttsSynthesizePlugin(env: Record<string, string>): Plugin {
           return
         }
 
-        const elevenKey = env.ELEVENLABS_API_KEY || env.VITE_ELEVENLABS_API_KEY || ''
-        const openaiKey = env.OPENAI_API_KEY || env.VITE_OPENAI_API_KEY || ''
+        const elevenKey = env.ELEVENLABS_API_KEY || ''
+        const openaiKey = env.OPENAI_API_KEY || ''
 
         if (!elevenKey && !openaiKey) {
           res.statusCode = 503

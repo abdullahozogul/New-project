@@ -45,18 +45,19 @@ API keys and secrets live in `.env.local`. The app can run without them using se
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_NEWS_SOURCE_ENDPOINT=
-# Chat coach: uses Google Gemini **gemini-2.5-flash** by default.
-# Option A — browser key (dev only; prefer Option B in production):
-VITE_GEMINI_API_KEY=
-# Optional override of model id (default: gemini-2.5-flash)
-VITE_GEMINI_MODEL=
-# Option B — your backend POST endpoint; request body includes `model`, `systemInstruction`, `contents`
+# Public backend endpoints used by browser code.
 VITE_AI_ASSISTANT_ENDPOINT=
 VITE_TTS_ENDPOINT=
+# Optional public model id override (default: gemini-2.5-flash)
+VITE_GEMINI_MODEL=
+
+# Server-only secrets for local dev proxies or production backend services.
 SUPABASE_SERVICE_ROLE_KEY=
 NEWS_SOURCE_API_KEY=
 AI_ASSISTANT_API_KEY=
-TTS_API_KEY=
+GEMINI_API_KEY=
+ELEVENLABS_API_KEY=
+OPENAI_API_KEY=
 ```
 
-Only variables prefixed with `VITE_` are exposed to browser code. For production, call Gemini from a server or edge function and point `VITE_AI_ASSISTANT_ENDPOINT` at it; keep API keys out of the client bundle.
+Only variables prefixed with `VITE_` are exposed to browser code. Keep provider API keys in server-only variables and call Gemini/TTS from the Vite dev proxies or from production server/edge endpoints.
