@@ -64,8 +64,7 @@ function toGeminiContents(turns: CoachTurn[]): { role: string; parts: { text: st
 
 /**
  * Calls Gemini **gemini-2.5-flash** (unless overridden by `VITE_GEMINI_MODEL`).
- * Configure either `VITE_GEMINI_API_KEY` (browser — dev only; use a backend proxy in production)
- * or `VITE_AI_ASSISTANT_ENDPOINT` (your server forwards to Gemini with the same model id).
+ * Configure `VITE_AI_ASSISTANT_ENDPOINT` or the dev proxy; provider keys stay server-side.
  */
 export async function generateCoachReply(
   turns: CoachTurn[],
