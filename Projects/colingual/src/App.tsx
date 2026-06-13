@@ -201,6 +201,10 @@ function saveLiveBundles(bundles: NewsStoryBundle[]): void {
   }
 }
 
+function savedWordCardId(term: string): string {
+  return `sw-${term}-${Date.now()}`
+}
+
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
@@ -575,7 +579,7 @@ function App() {
 
     recordLearningSession('writing', 75)
     addSrsCard({
-      id: `sw-${word.term}-${Date.now()}`,
+      id: savedWordCardId(word.term),
       skill: 'reading',
       cefrLevel: levelFromAppLevel(level),
       front: word.term,
