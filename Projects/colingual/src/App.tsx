@@ -99,6 +99,108 @@ import { loadCoachUsed, markCoachUsed } from './lib/classroomProgress'
 import { VIEW_TITLES } from './config/navigation'
 import { useAppNavigation } from './hooks/useAppNavigation'
 
+const SAVED_WORDS_KEY = 'colingual-saved-words-v1'
+const LIVE_BUNDLES_KEY = 'colingual-live-bundles-v1'
+const MAX_LIVE_BUNDLES = 8
+const DEFAULT_SAVED_WORDS: VocabularyItem[] = [
+  articles[2].vocabulary[0],
+  articles[2].vocabulary[1],
+]
+
+function isVocabularyItem(value: unknown): value is VocabularyItem {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const item = value as Partial<Record<keyof VocabularyItem, unknown>>
+  return (
+    typeof item.term === 'string' &&
+    typeof item.meaning === 'string' &&
+    typeof item.pronunciation === 'string' &&
+    typeof item.example === 'string'
+  )
+}
+
+function loadSavedWords(): VocabularyItem[] {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SAVED_WORDS
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SAVED_WORDS_KEY)
+    if (!raw) {
+      return DEFAULT_SAVED_WORDS
+    }
+
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? parsed.filter(isVocabularyItem) : DEFAULT_SAVED_WORDS
+  } catch {
+    return DEFAULT_SAVED_WORDS
+  }
+}
+
+function saveSavedWords(words: VocabularyItem[]): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(SAVED_WORDS_KEY, JSON.stringify(words))
+  } catch {
+    // Keep the current session usable if storage is unavailable or full.
+  }
+}
+
+function isNewsStoryBundle(value: unknown): value is NewsStoryBundle {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const bundle = value as Partial<NewsStoryBundle>
+  return (
+    typeof bundle.storyId === 'string' &&
+    typeof bundle.sourceTitle === 'string' &&
+    typeof bundle.category === 'string' &&
+    typeof bundle.fetchedAt === 'number' &&
+    typeof bundle.imageTone === 'string' &&
+    Boolean(bundle.variants) &&
+    typeof bundle.variants === 'object'
+  )
+}
+
+function loadLiveBundles(): NewsStoryBundle[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  try {
+    const raw = window.localStorage.getItem(LIVE_BUNDLES_KEY)
+    if (!raw) {
+      return []
+    }
+
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? parsed.filter(isNewsStoryBundle).slice(0, MAX_LIVE_BUNDLES) : []
+  } catch {
+    return []
+  }
+}
+
+function saveLiveBundles(bundles: NewsStoryBundle[]): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      LIVE_BUNDLES_KEY,
+      JSON.stringify(bundles.slice(0, MAX_LIVE_BUNDLES)),
+    )
+  } catch {
+    // Live stories are still available for the current in-memory session.
+  }
+}
+
 function App() {
   const [nativeLanguage, setNativeLanguage] = useState('tr')
   const [targetLanguage, setTargetLanguage] = useState('en')
@@ -106,7 +208,7 @@ function App() {
   const [goal, setGoal] = useState(learningGoals[0])
   const [user, setUser] = useState<User | null>(null)
   const [selectedStoryKey, setSelectedStoryKey] = useState('city-garden')
-  const [liveBundles, setLiveBundles] = useState<NewsStoryBundle[]>([])
+  const [liveBundles, setLiveBundles] = useState<NewsStoryBundle[]>(() => loadLiveBundles())
   const [shelfItems, setShelfItems] = useState<ShelfItem[]>(() => loadShelf())
   const [coachUsed, setCoachUsed] = useState(() => loadCoachUsed())
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
@@ -119,10 +221,7 @@ function App() {
     | { state: 'loading'; key: string }
     | { state: 'error'; key: string; reason: 'not_found' | 'unsupported_language' | 'network' }
   >({ state: 'idle' })
-  const [savedWords, setSavedWords] = useState<VocabularyItem[]>([
-    articles[2].vocabulary[0],
-    articles[2].vocabulary[1],
-  ])
+  const [savedWords, setSavedWords] = useState<VocabularyItem[]>(() => loadSavedWords())
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const [chatMessages, setChatMessages] = useState<CoachTurn[]>([
@@ -208,7 +307,6 @@ function App() {
 
   const syncFromSignals = useProgressStore((state) => state.syncFromSignals)
   const recordSession = useProgressStore((state) => state.recordSession)
-  const setStoreCefrLevel = useProgressStore((state) => state.setCurrentLevel)
   const { markActiveToday, atRisk: streakAtRisk } = useStreak()
   const { level: xpLevel, showLevelUp, dismissLevelUp } = useXpLevelUp()
   const addSrsCard = useSRSStore((state) => state.addCard)
@@ -221,12 +319,20 @@ function App() {
   }, [progressSignals, syncFromSignals])
 
   useEffect(() => {
-    markActiveToday()
-  }, [markActiveToday])
+    saveSavedWords(savedWords)
+  }, [savedWords])
 
   useEffect(() => {
-    setStoreCefrLevel(levelFromAppLevel(level))
-  }, [level, setStoreCefrLevel])
+    saveLiveBundles(liveBundles)
+  }, [liveBundles])
+
+  const recordLearningSession = useCallback<typeof recordSession>(
+    (skill, score) => {
+      markActiveToday()
+      recordSession(skill, score)
+    },
+    [markActiveToday, recordSession],
+  )
 
   useEffect(() => {
     if (streakAtRisk) {
@@ -236,7 +342,7 @@ function App() {
 
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
-      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      setNewsError('Add VITE_AI_ASSISTANT_ENDPOINT or a local AI_ASSISTANT_API_KEY to fetch live news.')
       return
     }
 
@@ -264,7 +370,12 @@ function App() {
         nativeLanguageLabel: nativeLanguageOption?.label ?? nativeLanguage,
       })
 
-      setLiveBundles((current) => [bundle, ...current.filter((item) => item.storyId !== bundle.storyId)])
+      setLiveBundles((current) =>
+        [bundle, ...current.filter((item) => item.storyId !== bundle.storyId)].slice(
+          0,
+          MAX_LIVE_BUNDLES,
+        ),
+      )
       setSelectedStoryKey(bundle.storyId)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'news_failed'
@@ -457,21 +568,23 @@ function App() {
   const toggleWord = (word: VocabularyItem) => {
     const termKey = word.term.toLowerCase()
 
+    if (savedTerms.has(termKey)) {
+      setSavedWords((current) => current.filter((item) => item.term.toLowerCase() !== termKey))
+      return
+    }
+
+    recordLearningSession('writing', 75)
+    addSrsCard({
+      id: `sw-${word.term}-${Date.now()}`,
+      skill: 'reading',
+      cefrLevel: levelFromAppLevel(level),
+      front: word.term,
+      back: word.meaning,
+    })
+
     setSavedWords((current) => {
       const alreadySaved = current.some((item) => item.term.toLowerCase() === termKey)
-      if (alreadySaved) {
-        return current.filter((item) => item.term.toLowerCase() !== termKey)
-      }
-
-      recordSession('writing', 75)
-      addSrsCard({
-        id: `sw-${word.term}-${Date.now()}`,
-        skill: 'reading',
-        cefrLevel: levelFromAppLevel(level),
-        front: word.term,
-        back: word.meaning,
-      })
-      return [word, ...current]
+      return alreadySaved ? current : [word, ...current]
     })
   }
 
@@ -504,7 +617,7 @@ function App() {
         audio.playbackRate = rate
         audio.onended = () => {
           URL.revokeObjectURL(result.audioUrl)
-          recordSession('listening')
+          recordLearningSession('listening')
         }
         audio.onerror = () => URL.revokeObjectURL(result.audioUrl)
         await audio.play()
@@ -522,7 +635,7 @@ function App() {
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = targetLanguageOption?.locale ?? 'en-US'
     utterance.rate = rate
-    utterance.onend = () => recordSession('listening')
+    utterance.onend = () => recordLearningSession('listening')
     window.speechSynthesis.speak(utterance)
   }
 
@@ -572,7 +685,7 @@ function App() {
     setChatInput('')
     markCoachUsed()
     setCoachUsed(true)
-    recordSession('speaking', 72)
+    recordLearningSession('speaking', 72)
 
     if (!isGeminiAiConfigured()) {
       setChatMessages([...transcript, { role: 'coach', text: offlineCoachFallback(trimmed) }])
@@ -773,7 +886,7 @@ function App() {
                   transcript={selectedArticle.paragraphs.join(' ')}
                   locale={targetLanguageOption?.locale}
                   cefrLevel={levelFromAppLevel(effectiveLevel)}
-                  onListenComplete={() => recordSession('listening')}
+                  onListenComplete={() => recordLearningSession('listening')}
                 />
                 <button type="button" onClick={() => speakArticle(selectedArticle)}>
                   <Headphones size={17} aria-hidden="true" />

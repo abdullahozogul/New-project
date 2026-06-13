@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSRSStore } from '../../stores/useSRSStore'
 import { useProgressStore } from '../../stores/useProgressStore'
 import { cardsDueForReview, type SRSRating } from '../../services/srsEngine'
@@ -10,16 +10,37 @@ export function ReviewSessionView() {
   const rateCard = useSRSStore((state) => state.rateCard)
   const recordRetention = useSRSStore((state) => state.recordRetention)
   const addXp = useProgressStore((state) => state.addXp)
+  const [sessionCardIds, setSessionCardIds] = useState(() => dueCards.map((dueCard) => dueCard.id))
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [correct, setCorrect] = useState(0)
 
-  const card = dueCards[index] ?? null
-  const remaining = dueCards.length - index
+  useEffect(() => {
+    if (sessionCardIds.length === 0 && dueCards.length > 0) {
+      setSessionCardIds(dueCards.map((dueCard) => dueCard.id))
+      setIndex(0)
+      setFlipped(false)
+      setCorrect(0)
+    }
+  }, [dueCards, sessionCardIds.length])
 
-  const badge = useMemo(() => `${dueCards.length} kart bekliyor`, [dueCards.length])
+  const cardsById = useMemo(() => new Map(cards.map((storedCard) => [storedCard.id, storedCard])), [cards])
+  const sessionCards = useMemo(
+    () =>
+      sessionCardIds.flatMap((cardId) => {
+        const storedCard = cardsById.get(cardId)
+        return storedCard ? [storedCard] : []
+      }),
+    [cardsById, sessionCardIds],
+  )
 
-  if (dueCards.length === 0) {
+  const totalCards = sessionCards.length
+  const card = sessionCards[index] ?? null
+  const remaining = Math.max(totalCards - index, 0)
+
+  const badge = useMemo(() => `${totalCards || dueCards.length} kart bekliyor`, [dueCards.length, totalCards])
+
+  if (dueCards.length === 0 && totalCards === 0) {
     return (
       <section className="panel review-session review-session--empty">
         <p>Bugün review için kart yok. Okurken kelime kaydedin.</p>
@@ -38,10 +59,11 @@ export function ReviewSessionView() {
     }
     rateCard(card.id, quality)
     setFlipped(false)
-    if (index + 1 >= dueCards.length) {
-      const ratePct = Math.round((nextCorrect / Math.max(dueCards.length, 1)) * 100)
+    if (index + 1 >= totalCards) {
+      const ratePct = Math.round((nextCorrect / Math.max(totalCards, 1)) * 100)
       recordRetention(ratePct)
       addXp({ type: 'dailyGoalReached' })
+      setSessionCardIds([])
       setIndex(0)
       setCorrect(0)
     } else {
