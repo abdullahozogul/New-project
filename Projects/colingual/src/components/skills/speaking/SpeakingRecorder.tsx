@@ -23,6 +23,7 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
   const [recording, setRecording] = useState(false)
   const [seconds, setSeconds] = useState(0)
   const [transcript, setTranscript] = useState('')
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -36,6 +37,7 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
     recognitionRef.current?.stop()
     audioContextRef.current?.close().catch(() => undefined)
     analyserRef.current = null
+    setAnalyser(null)
     setRecording(false)
   }, [])
 
@@ -53,6 +55,7 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
       source.connect(analyser)
       audioContextRef.current = audioContext
       analyserRef.current = analyser
+      setAnalyser(analyser)
 
       const recorder = new MediaRecorder(stream)
       recorder.ondataavailable = (event) => {
@@ -120,7 +123,7 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
   return (
     <div className="speaking-recorder skill-surface skill-surface--speaking">
       <p className="speaking-recorder__prompt">{prompt}</p>
-      <WaveformVisualizer analyser={analyserRef.current} active={recording} />
+      <WaveformVisualizer analyser={analyser} active={recording} />
       <div className="speaking-recorder__timer" aria-live="polite">
         {seconds}s / {maxSeconds}s
       </div>

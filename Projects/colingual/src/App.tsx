@@ -314,7 +314,7 @@ function App() {
   const { markActiveToday, atRisk: streakAtRisk } = useStreak()
   const { level: xpLevel, showLevelUp, dismissLevelUp } = useXpLevelUp()
   const addSrsCard = useSRSStore((state) => state.addCard)
-  const [streakModalOpen, setStreakModalOpen] = useState(false)
+  const [streakModalDismissed, setStreakModalDismissed] = useState(false)
   const sessionStats = useProgressStore((state) => state.sessions)
   const userStreak = useProgressStore((state) => state.progress.streak)
 
@@ -337,12 +337,6 @@ function App() {
     },
     [markActiveToday, recordSession],
   )
-
-  useEffect(() => {
-    if (streakAtRisk) {
-      setStreakModalOpen(true)
-    }
-  }, [streakAtRisk])
 
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
@@ -398,7 +392,10 @@ function App() {
       return
     }
 
-    void loadFreshNewsStory()
+    const timer = window.setTimeout(() => {
+      void loadFreshNewsStory()
+    }, 0)
+    return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount when AI is ready
   }, [])
 
@@ -470,7 +467,6 @@ function App() {
 
   useEffect(() => {
     if (!supabase) {
-      setUser(null)
       return
     }
 
@@ -503,15 +499,23 @@ function App() {
 
   useEffect(() => {
     let cancelled = false
+    const updateDictionaryStatus = (status: typeof dictionaryStatus) => {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          setDictionaryStatus(status)
+        }
+      })
+    }
+
     if (!selectedLexeme) {
-      setDictionaryStatus({ state: 'idle' })
+      updateDictionaryStatus({ state: 'idle' })
       return () => {
         cancelled = true
       }
     }
 
     if (selectedLexemeEntry) {
-      setDictionaryStatus({ state: 'idle' })
+      updateDictionaryStatus({ state: 'idle' })
       return () => {
         cancelled = true
       }
@@ -524,14 +528,14 @@ function App() {
     }
 
     if (dictionaryCache[dictionaryKey]) {
-      setDictionaryStatus({ state: 'idle' })
+      updateDictionaryStatus({ state: 'idle' })
       return () => {
         cancelled = true
       }
     }
 
     if (!supportsDictionaryLanguage(targetLanguage)) {
-      setDictionaryStatus({
+      updateDictionaryStatus({
         state: 'error',
         key: dictionaryKey,
         reason: 'unsupported_language',
@@ -541,7 +545,7 @@ function App() {
       }
     }
 
-    setDictionaryStatus({ state: 'loading', key: dictionaryKey })
+    updateDictionaryStatus({ state: 'loading', key: dictionaryKey })
     fetchDictionaryEntry(targetLanguage, selectedLexeme)
       .then((entry) => {
         if (cancelled) {
@@ -581,7 +585,7 @@ function App() {
     addSrsCard({
       id: savedWordCardId(word.term),
       skill: 'reading',
-      cefrLevel: levelFromAppLevel(level),
+      cefrLevel: levelFromAppLevel(effectiveLevel),
       front: word.term,
       back: word.meaning,
     })
@@ -598,15 +602,6 @@ function App() {
     }
     setLevel(candidate)
   }
-
-  useEffect(() => {
-    if (readingLevels.length === 0) {
-      return
-    }
-    if (!readingLevels.includes(level)) {
-      setLevel(readingLevels[0])
-    }
-  }, [selectedStoryKey, readingLevels])
 
   const speakArticle = async (article: Article) => {
     const text = [article.title, ...article.paragraphs].join('. ')
@@ -1594,7 +1589,10 @@ function App() {
       <MobileTabBar activeView={activeView} />
 
       <LevelUpModal open={showLevelUp} level={xpLevel} onClose={dismissLevelUp} />
-      <StreakProtectModal open={streakModalOpen} onClose={() => setStreakModalOpen(false)} />
+      <StreakProtectModal
+        open={streakAtRisk && !streakModalDismissed}
+        onClose={() => setStreakModalDismissed(true)}
+      />
       </div>
     </div>
   )
