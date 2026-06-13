@@ -17,7 +17,8 @@ export function useLearningPath(config?: Partial<LearningPathConfig>) {
   const sessions = useProgressStore((state) => state.sessions)
   const progress = useProgressStore((state) => state.progress)
   const userId = useUserStore((state) => state.userId)
-  const todayMinutes = config?.todayMinutes ?? useUserStore((state) => state.dailyGoalMinutes)
+  const storedDailyGoalMinutes = useUserStore((state) => state.dailyGoalMinutes)
+  const todayMinutes = config?.todayMinutes ?? storedDailyGoalMinutes
   const weakSkillWeight = config?.weakSkillWeight ?? 0.65
 
   const averages = useMemo(() => rollingAverageBySkill(sessions), [sessions])

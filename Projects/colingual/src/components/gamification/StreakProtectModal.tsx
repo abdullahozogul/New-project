@@ -7,7 +7,7 @@ type StreakProtectModalProps = {
 }
 
 export function StreakProtectModal({ open, onClose }: StreakProtectModalProps) {
-  const { streak, freezesLeft, useFreeze, atRisk } = useStreak()
+  const { streak, freezesLeft, useFreeze: applyFreeze, atRisk } = useStreak()
 
   if (!open || !atRisk) {
     return null
@@ -26,7 +26,7 @@ export function StreakProtectModal({ open, onClose }: StreakProtectModalProps) {
             type="button"
             disabled={freezesLeft <= 0}
             onClick={() => {
-              if (useFreeze()) {
+              if (applyFreeze()) {
                 onClose()
               }
             }}

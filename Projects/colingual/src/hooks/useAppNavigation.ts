@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DEEP_LINK_HASHES, hashForView, resolveAppView, type AppView } from '../config/navigation'
 
+function currentNavigationHash(): string {
+  if (typeof window === 'undefined') {
+    return '#home'
+  }
+
+  const hash = window.location.hash || '#home'
+  return DEEP_LINK_HASHES.has(hash) ? hash : hashForView(resolveAppView(hash))
+}
+
 export function useAppNavigation() {
-  const [navHash, setNavHash] = useState(() =>
-    typeof window !== 'undefined' ? window.location.hash || '#home' : '#home',
-  )
+  const [navHash, setNavHash] = useState(() => currentNavigationHash())
 
   const activeView = resolveAppView(navHash)
 
   useEffect(() => {
-    const syncHash = () => setNavHash(window.location.hash || '#home')
+    const syncHash = () => setNavHash(currentNavigationHash())
     syncHash()
     window.addEventListener('hashchange', syncHash)
     return () => window.removeEventListener('hashchange', syncHash)
@@ -30,7 +37,6 @@ export function useAppNavigation() {
     const canonical = hashForView(resolveAppView(hash))
     if (hash !== canonical) {
       window.history.replaceState(null, '', canonical)
-      setNavHash(canonical)
     }
   }, [])
 

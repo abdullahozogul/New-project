@@ -10,16 +10,32 @@ export function ReviewSessionView() {
   const rateCard = useSRSStore((state) => state.rateCard)
   const recordRetention = useSRSStore((state) => state.recordRetention)
   const addXp = useProgressStore((state) => state.addXp)
+  const [sessionCardIds, setSessionCardIds] = useState<string[] | null>(null)
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [correct, setCorrect] = useState(0)
 
-  const card = dueCards[index] ?? null
-  const remaining = dueCards.length - index
+  const cardsById = useMemo(() => new Map(cards.map((storedCard) => [storedCard.id, storedCard])), [cards])
+  const activeSessionCardIds = useMemo(
+    () => sessionCardIds ?? dueCards.map((dueCard) => dueCard.id),
+    [dueCards, sessionCardIds],
+  )
+  const sessionCards = useMemo(
+    () =>
+      activeSessionCardIds.flatMap((cardId) => {
+        const storedCard = cardsById.get(cardId)
+        return storedCard ? [storedCard] : []
+      }),
+    [activeSessionCardIds, cardsById],
+  )
 
-  const badge = useMemo(() => `${dueCards.length} kart bekliyor`, [dueCards.length])
+  const totalCards = sessionCards.length
+  const card = sessionCards[index] ?? null
+  const remaining = Math.max(totalCards - index, 0)
 
-  if (dueCards.length === 0) {
+  const badge = useMemo(() => `${totalCards || dueCards.length} kart bekliyor`, [dueCards.length, totalCards])
+
+  if (dueCards.length === 0 && totalCards === 0) {
     return (
       <section className="panel review-session review-session--empty">
         <p>Bugün review için kart yok. Okurken kelime kaydedin.</p>
@@ -33,15 +49,19 @@ export function ReviewSessionView() {
     }
     const wasCorrect = quality >= 3
     const nextCorrect = wasCorrect ? correct + 1 : correct
+    if (!sessionCardIds) {
+      setSessionCardIds(activeSessionCardIds)
+    }
     if (wasCorrect) {
       setCorrect(nextCorrect)
     }
     rateCard(card.id, quality)
     setFlipped(false)
-    if (index + 1 >= dueCards.length) {
-      const ratePct = Math.round((nextCorrect / Math.max(dueCards.length, 1)) * 100)
+    if (index + 1 >= totalCards) {
+      const ratePct = Math.round((nextCorrect / Math.max(totalCards, 1)) * 100)
       recordRetention(ratePct)
       addXp({ type: 'dailyGoalReached' })
+      setSessionCardIds(null)
       setIndex(0)
       setCorrect(0)
     } else {

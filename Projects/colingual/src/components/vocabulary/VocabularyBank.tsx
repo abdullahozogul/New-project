@@ -14,6 +14,10 @@ type VocabularyBankProps = {
   learnedSkill?: Skill
 }
 
+function vocabularyCardId(term: string): string {
+  return `vb-${term}-${Date.now()}`
+}
+
 export function VocabularyBank({
   words,
   defaultLevel,
@@ -39,7 +43,7 @@ export function VocabularyBank({
 
   const queueForReview = (word: VocabularyItem) => {
     addCard({
-      id: `vb-${word.term}-${Date.now()}`,
+      id: vocabularyCardId(word.term),
       skill: learnedSkill,
       cefrLevel: levelFromAppLevel(defaultLevel),
       front: word.term,
