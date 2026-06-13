@@ -729,7 +729,6 @@ function App() {
     })
 
     if (error) {
-      // eslint-disable-next-line no-console
       console.error('Google sign-in failed', error)
     }
   }
@@ -742,7 +741,6 @@ function App() {
     const { error } = await supabase.auth.signOut()
 
     if (error) {
-      // eslint-disable-next-line no-console
       console.error('Sign out failed', error)
     }
   }
