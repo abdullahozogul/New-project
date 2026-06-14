@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Article } from '../../data'
 import type { GrammarIssue, SpeakingEvaluationResponse, WritingFeedbackResponse } from '../../types'
 import { levelFromAppLevel } from '../../utils/cefrUtils'
@@ -65,10 +65,6 @@ export function SkillsWorkbench({
   const { markActiveToday } = useStreak()
 
   const transcript = useMemo(() => article.paragraphs.join(' '), [article.paragraphs])
-
-  useEffect(() => {
-    setNotes(loadNotes(storyKey))
-  }, [storyKey])
 
   const recordActiveSession: typeof recordSession = (skill, score) => {
     markActiveToday()
