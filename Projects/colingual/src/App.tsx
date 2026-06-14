@@ -215,14 +215,17 @@ function App() {
   const [streakModalOpen, setStreakModalOpen] = useState(false)
   const sessionStats = useProgressStore((state) => state.sessions)
   const userStreak = useProgressStore((state) => state.progress.streak)
+  const recordActiveSession = useCallback<typeof recordSession>(
+    (skill, score) => {
+      markActiveToday()
+      recordSession(skill, score)
+    },
+    [markActiveToday, recordSession],
+  )
 
   useEffect(() => {
     syncFromSignals(progressSignals)
   }, [progressSignals, syncFromSignals])
-
-  useEffect(() => {
-    markActiveToday()
-  }, [markActiveToday])
 
   useEffect(() => {
     setStoreCefrLevel(levelFromAppLevel(level))
@@ -236,7 +239,7 @@ function App() {
 
   const loadFreshNewsStory = async () => {
     if (!isGeminiAiConfigured()) {
-      setNewsError('Add VITE_GEMINI_API_KEY or VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
+      setNewsError('Configure VITE_AI_ASSISTANT_ENDPOINT to fetch live news.')
       return
     }
 
@@ -463,7 +466,7 @@ function App() {
         return current.filter((item) => item.term.toLowerCase() !== termKey)
       }
 
-      recordSession('writing', 75)
+      recordActiveSession('writing', 75)
       addSrsCard({
         id: `sw-${word.term}-${Date.now()}`,
         skill: 'reading',
@@ -504,7 +507,7 @@ function App() {
         audio.playbackRate = rate
         audio.onended = () => {
           URL.revokeObjectURL(result.audioUrl)
-          recordSession('listening')
+          recordActiveSession('listening')
         }
         audio.onerror = () => URL.revokeObjectURL(result.audioUrl)
         await audio.play()
@@ -522,7 +525,7 @@ function App() {
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = targetLanguageOption?.locale ?? 'en-US'
     utterance.rate = rate
-    utterance.onend = () => recordSession('listening')
+    utterance.onend = () => recordActiveSession('listening')
     window.speechSynthesis.speak(utterance)
   }
 
@@ -572,7 +575,7 @@ function App() {
     setChatInput('')
     markCoachUsed()
     setCoachUsed(true)
-    recordSession('speaking', 72)
+    recordActiveSession('speaking', 72)
 
     if (!isGeminiAiConfigured()) {
       setChatMessages([...transcript, { role: 'coach', text: offlineCoachFallback(trimmed) }])
@@ -773,7 +776,7 @@ function App() {
                   transcript={selectedArticle.paragraphs.join(' ')}
                   locale={targetLanguageOption?.locale}
                   cefrLevel={levelFromAppLevel(effectiveLevel)}
-                  onListenComplete={() => recordSession('listening')}
+                  onListenComplete={() => recordActiveSession('listening')}
                 />
                 <button type="button" onClick={() => speakArticle(selectedArticle)}>
                   <Headphones size={17} aria-hidden="true" />

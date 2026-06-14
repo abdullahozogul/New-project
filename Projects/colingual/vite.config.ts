@@ -139,7 +139,7 @@ function geminiDevProxyPlugin(env: Record<string, string>): Plugin {
           return
         }
 
-        const apiKey = env.AI_ASSISTANT_API_KEY?.trim() || env.VITE_GEMINI_API_KEY?.trim()
+        const apiKey = env.AI_ASSISTANT_API_KEY?.trim()
         if (!apiKey) {
           res.statusCode = 503
           res.end(JSON.stringify({ error: 'missing_gemini_key' }))
@@ -305,8 +305,8 @@ function ttsSynthesizePlugin(env: Record<string, string>): Plugin {
           return
         }
 
-        const elevenKey = env.ELEVENLABS_API_KEY || env.VITE_ELEVENLABS_API_KEY || ''
-        const openaiKey = env.OPENAI_API_KEY || env.VITE_OPENAI_API_KEY || ''
+        const elevenKey = env.ELEVENLABS_API_KEY || ''
+        const openaiKey = env.OPENAI_API_KEY || ''
 
         if (!elevenKey && !openaiKey) {
           res.statusCode = 503

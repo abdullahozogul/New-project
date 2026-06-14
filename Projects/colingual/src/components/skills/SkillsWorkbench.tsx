@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Article } from '../../data'
 import type { GrammarIssue, SpeakingEvaluationResponse, WritingFeedbackResponse } from '../../types'
 import { levelFromAppLevel } from '../../utils/cefrUtils'
@@ -16,6 +16,7 @@ import { TTSPlayer } from '../audio/TTSPlayer'
 import { localeToLanguage } from '../../utils/ttsUtils'
 import { fetchWritingFeedback, fetchSpeakingEvaluation } from '../../services/aiService'
 import { useProgressStore } from '../../stores/useProgressStore'
+import { useStreak } from '../../hooks/useStreak'
 import './skills-themes.css'
 import './SkillsWorkbench.css'
 
@@ -61,8 +62,18 @@ export function SkillsWorkbench({
   const [lastWord, setLastWord] = useState<string | null>(null)
   const ttsLanguage = localeToLanguage(locale)
   const recordSession = useProgressStore((state) => state.recordSession)
+  const { markActiveToday } = useStreak()
 
   const transcript = useMemo(() => article.paragraphs.join(' '), [article.paragraphs])
+
+  useEffect(() => {
+    setNotes(loadNotes(storyKey))
+  }, [storyKey])
+
+  const recordActiveSession: typeof recordSession = (skill, score) => {
+    markActiveToday()
+    recordSession(skill, score)
+  }
 
   const addNote = (quote: string, note: string) => {
     const next: ReadingNote = {
@@ -74,7 +85,7 @@ export function SkillsWorkbench({
     const merged = [next, ...notes]
     setNotes(merged)
     saveNotes(storyKey, merged)
-    recordSession('reading')
+    recordActiveSession('reading')
   }
 
   const removeNote = (id: string) => {
@@ -95,7 +106,7 @@ export function SkillsWorkbench({
       })
       setWritingFeedback(feedback)
       setWritingIssues(feedback.grammarIssues)
-      recordSession('writing', feedback.overallScore)
+      recordActiveSession('writing', feedback.overallScore)
     } catch {
       setWritingFeedback(null)
       setWritingIssues([])
@@ -117,7 +128,7 @@ export function SkillsWorkbench({
       })
       setSpeakingFeedback(evaluation)
       setSpeakingOpen(true)
-      recordSession('speaking', evaluation.fluencyScore)
+      recordActiveSession('speaking', evaluation.fluencyScore)
     } catch {
       setSpeakingFeedback(null)
     }
@@ -201,7 +212,7 @@ export function SkillsWorkbench({
               transcript={transcript}
               locale={locale}
               cefrLevel={cefrLevel}
-              onListenComplete={() => recordSession('listening')}
+              onListenComplete={() => recordActiveSession('listening')}
             />
             <TranscriptViewer paragraphs={article.paragraphs} onWordClick={onWordClick} />
           </div>
