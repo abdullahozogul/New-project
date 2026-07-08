@@ -17,61 +17,8 @@ function devGeminiProxyEndpoint(): string | null {
 
 export function isGeminiConfigured(): boolean {
   return Boolean(
-    import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
-      import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() ||
-      devGeminiProxyEndpoint(),
+    import.meta.env.VITE_AI_ASSISTANT_ENDPOINT?.trim() || devGeminiProxyEndpoint(),
   )
-}
-
-async function generateViaGoogleAiStudio(
-  model: string,
-  systemInstruction: string,
-  contents: GeminiContent[],
-  generationConfig?: Record<string, unknown>,
-): Promise<string> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim()
-  if (!apiKey) {
-    throw new Error('missing_api_key')
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model,
-  )}:generateContent?key=${encodeURIComponent(apiKey)}`
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      contents,
-      generationConfig: {
-        temperature: 0.55,
-        maxOutputTokens: 8192,
-        ...generationConfig,
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text()
-    throw new Error(`gemini_http_${response.status}: ${errText.slice(0, 200)}`)
-  }
-
-  const data = (await response.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[]
-    error?: { message?: string }
-  }
-
-  if (data.error?.message) {
-    throw new Error(data.error.message)
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
-  if (!text.trim()) {
-    throw new Error('empty_response')
-  }
-
-  return text.trim()
 }
 
 async function generateViaAssistantProxy(
@@ -149,7 +96,7 @@ export async function generateGeminiContents(
     return generateViaAssistantProxy(model, systemInstruction, contents, generationConfig)
   }
 
-  return generateViaGoogleAiStudio(model, systemInstruction, contents, generationConfig)
+  throw new Error('missing_proxy')
 }
 
 function extractJsonObject(raw: string): string {
