@@ -38,9 +38,10 @@ Tam README: proje kökünde `README.md`.
 
 ## Env (`.env.local`)
 
-- `VITE_GEMINI_API_KEY` veya `VITE_AI_ASSISTANT_ENDPOINT` — koç + canlı CEFR
+- `VITE_AI_ASSISTANT_ENDPOINT` — koç + canlı CEFR için backend/edge endpoint
+- `AI_ASSISTANT_API_KEY` — sadece dev proxy / backend tarafında Gemini anahtarı
 - `NEWS_SOURCE_API_KEY` / `VITE_NEWS_SOURCE_ENDPOINT` — alternatif haber
 - `VITE_SUPABASE_*` — auth (opsiyonel)
-- Planlı TTS: `VITE_ELEVENLABS_API_KEY`, `VITE_OPENAI_API_KEY` — bkz. `colingual-tts.mdc`
+- TTS: `VITE_TTS_ENDPOINT`; provider anahtarları server-only `ELEVENLABS_API_KEY`, `OPENAI_API_KEY` — bkz. `colingual-tts.mdc`
 
 Değişiklik yaparken README entegrasyon tablosunu ve ilgili `.mdc` dosyasını güncel tut.
