@@ -1,7 +1,5 @@
 import type { CEFRLevel } from '../../types'
 import type { TTSProvider, TTSRequest, TTSResponse, TTSUseCase } from '../../types/tts'
-import { elevenLabsSynthesize } from './elevenLabsProvider'
-import { openaiTTSSynthesize } from './openaiTTSProvider'
 import { getCachedAudio, setCachedAudio } from './ttsCache'
 
 const PROVIDER_RULES: Record<TTSUseCase, TTSProvider> = {
@@ -16,8 +14,19 @@ function voiceKey(request: TTSRequest): string {
   return request.voice ?? request.language
 }
 
-async function fetchSynthesizeFromDevApi(request: TTSRequest): Promise<ArrayBuffer> {
-  const response = await fetch('/api/tts/synthesize', {
+function configuredTtsEndpoint(): string {
+  const configured = import.meta.env.VITE_TTS_ENDPOINT?.trim()
+  if (configured) {
+    return configured
+  }
+  return import.meta.env.DEV ? '/api/tts/synthesize' : ''
+}
+
+async function fetchSynthesizeFromEndpoint(
+  endpoint: string,
+  request: TTSRequest,
+): Promise<ArrayBuffer> {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -31,66 +40,18 @@ async function fetchSynthesizeFromDevApi(request: TTSRequest): Promise<ArrayBuff
   return response.arrayBuffer()
 }
 
-async function synthesizeWithProviders(
-  request: TTSRequest,
-  elevenKey: string,
-  openaiKey: string,
-): Promise<{ buffer: ArrayBuffer; provider: TTSProvider }> {
-  const preferred = PROVIDER_RULES[request.useCase]
-
-  const tryEleven = () => elevenLabsSynthesize(request, elevenKey)
-  const tryOpenai = () => openaiTTSSynthesize(request, openaiKey)
-
-  try {
-    if (preferred === 'elevenlabs' && elevenKey) {
-      return { buffer: await tryEleven(), provider: 'elevenlabs' }
-    }
-    if (openaiKey) {
-      return { buffer: await tryOpenai(), provider: 'openai' }
-    }
-    if (elevenKey) {
-      return { buffer: await tryEleven(), provider: 'elevenlabs' }
-    }
-    throw new Error('tts_no_provider_key')
-  } catch {
-    if (preferred === 'elevenlabs' && openaiKey) {
-      return { buffer: await tryOpenai(), provider: 'openai' }
-    }
-    if (elevenKey) {
-      return { buffer: await tryEleven(), provider: 'elevenlabs' }
-    }
-    throw new Error('tts_synthesis_failed')
-  }
-}
-
 async function synthesizeBuffer(request: TTSRequest): Promise<{ buffer: ArrayBuffer; provider: TTSProvider }> {
-  if (import.meta.env.DEV) {
-    try {
-      const buffer = await fetchSynthesizeFromDevApi(request)
-      return { buffer, provider: PROVIDER_RULES[request.useCase] }
-    } catch {
-      // fall through to direct keys or throw
-    }
-  }
-
-  const elevenKey = import.meta.env.VITE_ELEVENLABS_API_KEY ?? ''
-  const openaiKey = import.meta.env.VITE_OPENAI_API_KEY ?? ''
-
-  if (!elevenKey && !openaiKey) {
+  const endpoint = configuredTtsEndpoint()
+  if (!endpoint) {
     throw new Error('tts_not_configured')
   }
 
-  return synthesizeWithProviders(request, elevenKey, openaiKey)
-}
-
-function hasClientTtsKeys(): boolean {
-  return Boolean(
-    import.meta.env.VITE_ELEVENLABS_API_KEY || import.meta.env.VITE_OPENAI_API_KEY,
-  )
+  const buffer = await fetchSynthesizeFromEndpoint(endpoint, request)
+  return { buffer, provider: PROVIDER_RULES[request.useCase] }
 }
 
 export function isCloudTtsConfigured(): boolean {
-  return import.meta.env.DEV || hasClientTtsKeys()
+  return Boolean(configuredTtsEndpoint())
 }
 
 export async function synthesize(request: TTSRequest): Promise<TTSResponse> {
