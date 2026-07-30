@@ -28,16 +28,56 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const mountedRef = useRef(true)
 
   const maxSeconds = MAX_SECONDS[cefrLevel]
 
-  const stopTracks = useCallback(() => {
-    mediaRecorderRef.current?.stop()
-    recognitionRef.current?.stop()
-    audioContextRef.current?.close().catch(() => undefined)
+  const releaseCapture = useCallback((updateUi: boolean) => {
+    const recorder = mediaRecorderRef.current
+    if (recorder && recorder.state !== 'inactive') {
+      try {
+        recorder.stop()
+      } catch {
+        /* already stopped */
+      }
+    }
+    mediaRecorderRef.current = null
+
+    const recognition = recognitionRef.current
+    if (recognition) {
+      try {
+        recognition.stop()
+      } catch {
+        /* already stopped */
+      }
+      recognitionRef.current = null
+    }
+
+    const audioContext = audioContextRef.current
+    if (audioContext) {
+      void audioContext.close().catch(() => undefined)
+      audioContextRef.current = null
+    }
     analyserRef.current = null
-    setRecording(false)
+
+    if (updateUi) {
+      setRecording(false)
+    }
   }, [])
+
+  const stopTracks = useCallback(() => {
+    releaseCapture(true)
+  }, [releaseCapture])
+
+  // SkillsWorkbench unmounts this component when leaving the speaking tab.
+  // Without cleanup, getUserMedia tracks / SpeechRecognition / AudioContext keep running.
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      releaseCapture(false)
+    }
+  }, [releaseCapture])
 
   const start = useCallback(async () => {
     setTranscript('')
@@ -46,6 +86,10 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        return
+      }
       const audioContext = new AudioContext()
       const source = audioContext.createMediaStreamSource(stream)
       const analyser = audioContext.createAnalyser()
@@ -69,6 +113,11 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
       /* mic permission denied */
     }
 
+    if (!mountedRef.current) {
+      releaseCapture(false)
+      return
+    }
+
     const SpeechRecognitionCtor =
       window.SpeechRecognition ?? window.webkitSpeechRecognition
     if (SpeechRecognitionCtor) {
@@ -77,6 +126,9 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
       recognition.continuous = true
       recognition.interimResults = true
       recognition.onresult = (event) => {
+        if (!mountedRef.current) {
+          return
+        }
         const parts: string[] = []
         for (let index = 0; index < event.results.length; index += 1) {
           parts.push(event.results[index][0].transcript)
@@ -88,7 +140,7 @@ export function SpeakingRecorder({ cefrLevel, prompt, onSubmit }: SpeakingRecord
     }
 
     setRecording(true)
-  }, [])
+  }, [releaseCapture])
 
   useEffect(() => {
     if (!recording) {
