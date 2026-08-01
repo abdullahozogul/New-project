@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react'
+import { extractLexeme, isWordToken, tokenizeClickableText } from '../../../utils/wordTokens'
 
 type ClickableTextProps = {
   text: string
@@ -7,18 +8,16 @@ type ClickableTextProps = {
 }
 
 export function ClickableText({ text, onWordClick, onWordContextMenu }: ClickableTextProps) {
-  const tokens =
-    text.match(/[A-Za-zÀ-ÖØ-öø-ÿ]+(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?|[^A-Za-zÀ-ÖØ-öø-ÿ]+/g) ?? [text]
+  const tokens = tokenizeClickableText(text)
 
   return (
     <>
       {tokens.map((token, index) => {
-        const isWord = /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(token)
-        if (!isWord) {
+        if (!isWordToken(token)) {
           return <span key={`${token}-${index}`}>{token}</span>
         }
 
-        const lexeme = token.replace(/^[^A-Za-zÀ-ÖØ-öø-ÿ]+|[^A-Za-zÀ-ÖØ-öø-ÿ]+$/g, '')
+        const lexeme = extractLexeme(token)
         if (!lexeme) {
           return <span key={`${token}-${index}`}>{token}</span>
         }

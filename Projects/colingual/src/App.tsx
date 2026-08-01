@@ -92,6 +92,7 @@ import { useXpLevelUp } from './hooks/useXpLevelUp'
 import { useSRSStore } from './stores/useSRSStore'
 import { levelFromAppLevel } from './utils/cefrUtils'
 import { localeToLanguage } from './utils/ttsUtils'
+import { extractLexeme, isWordToken, tokenizeClickableText } from './utils/wordTokens'
 import { isCloudTtsConfigured, tts } from './services/tts/ttsService'
 import { useStreak } from './hooks/useStreak'
 import { useProgressStore } from './stores/useProgressStore'
@@ -527,19 +528,16 @@ function App() {
   }
 
   const renderClickableParagraph = (paragraph: string) => {
-    const tokens = paragraph.match(/[A-Za-zÀ-ÖØ-öø-ÿ]+(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?|[^A-Za-zÀ-ÖØ-öø-ÿ]+/g) ?? [
-      paragraph,
-    ]
+    const tokens = tokenizeClickableText(paragraph)
 
     return (
       <p key={paragraph}>
         {tokens.map((token, index) => {
-          const isWord = /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(token)
-          if (!isWord) {
+          if (!isWordToken(token)) {
             return <span key={`${token}-${index}`}>{token}</span>
           }
 
-          const lexeme = token.replace(/^[^A-Za-zÀ-ÖØ-öø-ÿ]+|[^A-Za-zÀ-ÖØ-öø-ÿ]+$/g, '')
+          const lexeme = extractLexeme(token)
           if (!lexeme) {
             return <span key={`${token}-${index}`}>{token}</span>
           }
