@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/*
+ * Üç görsel dünya (referans tasarım dili korunur):
+ *  - Panoya iş platformu: beyaz yüzey, açık gri zemin, kurumsal mavi #0B5CAD, koyu lacivert metin.
+ *  - Araştırma ekranı: gri kâğıt zemin, koyu yeşil vurgu #35614c (platformdan bilerek ayrı).
+ *  - Posta istemcisi: e-posta kutusu görünümü.
+ * Tek açık tema bilinçli bir tercihtir: gerçek, yalnızca açık temalı bir iş sitesini taklit eder.
+ */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-p-bg: #f2f4f7;
+  --color-p-surface: #ffffff;
+  --color-p-ink: #1c2330;
+  --color-p-navy: #0f1d33;
+  --color-p-muted: #5c6576;
+  --color-p-line: #dce1e8;
+  --color-p-accent: #0b5cad;
+  --color-p-accent-dark: #084a8c;
+  --color-p-accent-soft: #e7f0fa;
+
+  --color-ok: #1b7743;
+  --color-ok-soft: #e4f3ea;
+  --color-bad: #b0281f;
+  --color-bad-soft: #fbeae8;
+  --color-pend: #5c6576;
+  --color-pend-soft: #eef0f3;
+
+  --color-r-bg: #e9ebea;
+  --color-r-paper: #ffffff;
+  --color-r-ink: #22262a;
+  --color-r-muted: #5f666d;
+  --color-r-line: #d5d9dc;
+  --color-r-accent: #35614c;
+  --color-r-accent-soft: #e6efe9;
+  --color-r-head: #2f3437;
+
+  --color-d-bg: #23262b;
+  --color-d-ink: #e9ecef;
+  --color-d-hl: #f2c94c;
+  --color-note-bg: #fff7d6;
+  --color-note-line: #e7cf73;
+  --color-note-ink: #5b4700;
+
+  --color-m-bg: #f6f8fb;
+  --color-m-sel: #d3e3fd;
+  --color-m-unread: #0f1d33;
+  --color-m-accent: #1a62c4;
+  --color-m-line: #e1e5ea;
+}
+
+@layer base {
+  html { color-scheme: light; }
+  body { font-family: var(--font-sans); font-size: 15px; line-height: 1.5; color: var(--color-p-ink); background: var(--color-p-bg); -webkit-text-size-adjust: 100%; }
+  :focus-visible { outline: 2px solid var(--color-p-accent); outline-offset: 2px; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button:not(:disabled) { cursor: pointer; }
+  [hidden] { display: none !important; }
+  /* Referans: legend float + tam genişlik; böylece soru metni ile seçenekler arasında tutarlı boşluk olur. */
+  fieldset > legend { float: left; width: 100%; }
+  fieldset > legend + * { clear: both; }
+}
+
+@layer components {
+  .wrap { max-width: 1128px; margin-inline: auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)); }
+
+  /* ---------- araştırma: ölçek düğmeleri (referans .scale) ---------- */
+  .r-scale { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 6px; max-width: var(--mw, 100%); }
+  .r-scale label { position: relative; cursor: pointer; }
+  .r-scale input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .r-scale span { display: block; text-align: center; border: 1px solid #bcc3c7; border-radius: 3px; padding: 7px 0; font-size: 14px; background: #fff; font-variant-numeric: tabular-nums; transition: background-color .12s, border-color .12s; }
+  .r-scale label:hover span { border-color: var(--color-r-accent); }
+  .r-scale input:checked + span { background: var(--color-r-accent); border-color: var(--color-r-accent); color: #fff; font-weight: 600; }
+  .r-scale input:focus-visible + span { outline: 2px solid var(--color-r-accent); outline-offset: 2px; }
+  @media (max-width: 520px) { .r-scale { gap: 4px; } .r-scale span { padding: 8px 0; font-size: 13px; } }
+
+  .r-choice { display: flex; gap: 9px; align-items: flex-start; border: 1px solid var(--color-r-line); border-radius: 3px; padding: 8px 11px; cursor: pointer; background: #fff; }
+  .r-choice:has(input:checked) { border-color: var(--color-r-accent); background: var(--color-r-accent-soft); }
+  .r-choice input { margin-top: 4px; accent-color: var(--color-r-accent); }
+  .r-in { border: 1px solid #bcc3c7; border-radius: 3px; padding: 8px 10px; width: 100%; background: #fff; display: block; }
+  .r-in:focus { outline: 2px solid var(--color-r-accent); outline-offset: 1px; }
+
+  .prose-r p { margin: 0 0 12px; }
+  .prose-r ul { margin: 0 0 12px; padding-left: 20px; list-style: disc; }
+  .prose-r li { margin: 2px 0; }
+  .prose-r h3 { font-size: 15px; font-weight: 650; margin: 12px 0 4px; }
+  .prose-r h3:first-child { margin-top: 0; }
+  .prose-r .small { font-size: 13px; color: var(--color-r-muted); }
+
+  /* ---------- posta ---------- */
+  .m-text p { margin: 0 0 12px; }
+  .m-row-fresh { animation: m-flash 1.6s ease-out 1; }
+  @keyframes m-flash { from { background: #fff6cc; } to { background: #fff; } }
+  @media (prefers-reduced-motion: reduce) { .m-row-fresh { animation: none; } }
+
+  .job-body ul { margin: 0; padding-left: 20px; list-style: disc; }
+  .job-body li { margin: 3px 0; }
+}
