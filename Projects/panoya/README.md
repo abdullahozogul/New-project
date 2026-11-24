@@ -4,6 +4,7 @@ Gerçek bir iş ilanı sitesi görünümünde, iki deney modülünü (laboratuva
 
 - `docs/01-teknik-dokum.md` – referans dosyaların eksiksiz teknik dökümü ve raporlanan açık konular
 - `docs/02-mimari.md` – mimari, bilimsel bütünlük önlemleri, geliştirme aşamaları
+- `docs/03-vercel-yayin.md` – Vercel üzerinde site olarak yayınlama
 
 ## Teknolojiler
 

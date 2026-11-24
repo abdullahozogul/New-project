@@ -9,7 +9,13 @@ export async function POST(req: Request) {
   if (a && a.until > Date.now()) return NextResponse.json({ error: 'Çok fazla deneme. Lütfen birkaç dakika sonra tekrar deneyiniz.' }, { status: 429 });
   const form = await req.formData().catch(() => null);
   const pw = String(form?.get('password') ?? '');
-  const okPw = await checkPassword(pw);
+  let okPw = false;
+  try {
+    okPw = await checkPassword(pw);
+  } catch {
+    // ADMIN_PASSWORD / SESSION_SECRET ortam değişkenleri eksik ya da kısa.
+    return NextResponse.redirect(new URL('/arastirmaci/giris?hata=ayar', req.url), 303);
+  }
   if (!okPw) {
     const n = (a?.n ?? 0) + 1;
     attempts.set(ip, { n, until: n >= 5 ? Date.now() + 5 * 60_000 : 0 });

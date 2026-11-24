@@ -5,9 +5,12 @@ const g = globalThis as unknown as { __panoyaPool?: Pool };
 
 export function pool(): Pool {
   if (!g.__panoyaPool) {
-    const url = process.env.DATABASE_URL;
+    // Vercel'in Neon / Postgres entegrasyonu POSTGRES_URL de tanımlar.
+    const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     if (!url) throw new Error('DATABASE_URL tanımlı değil (.env.example dosyasına bakınız)');
-    g.__panoyaPool = new Pool({ connectionString: url, max: 10, ssl: /supabase|sslmode=require/.test(url) ? { rejectUnauthorized: false } : undefined });
+    const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
+    // Sunucusuz ortamda (Vercel) her işlev örneği az bağlantı açar.
+    g.__panoyaPool = new Pool({ connectionString: url, max: process.env.VERCEL ? 3 : 10, ssl: local ? undefined : { rejectUnauthorized: false } });
   }
   return g.__panoyaPool;
 }
